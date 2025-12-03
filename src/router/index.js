@@ -13,6 +13,9 @@ import CategoryFormView from '@/views/categories/CategoryFormView.vue'
 import CategoryDetailView from '@/views/categories/CategoryDetailView.vue'
 import MediaLibraryView from '@/views/media/MediaLibraryView.vue'
 import MediaDetailView from '@/views/media/MediaDetailView.vue'
+import EventListView from '@/views/events/EventListView.vue'
+import EventFormView from '@/views/events/EventFormView.vue'
+import EventDetailView from '@/views/events/EventDetailView.vue'
 import tokenService from '@/services/tokenService'
 import { useAuthStore } from '@/store/modules/auth'
 
@@ -39,6 +42,10 @@ const router = createRouter({
         { path: 'categories/:id/edit', name: 'category-edit', component: CategoryFormView },
         { path: 'media', name: 'media-library', component: MediaLibraryView },
         { path: 'media/:id', name: 'media-detail', component: MediaDetailView },
+        { path: 'events', name: 'event-list', component: EventListView },
+        { path: 'events/new', name: 'event-form', component: EventFormView },
+        { path: 'events/:id', name: 'event-detail', component: EventDetailView },
+        { path: 'events/:id/edit', name: 'event-edit', component: EventFormView },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },
