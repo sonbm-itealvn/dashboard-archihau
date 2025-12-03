@@ -1,0 +1,11 @@
+export function required(value) {
+  return value !== undefined && value !== null && String(value).trim().length > 0
+}
+
+export function minLength(value, length) {
+  return (value ?? '').length >= length
+}
+
+export function isEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value ?? '')
+}

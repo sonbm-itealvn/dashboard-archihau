@@ -1,0 +1,44 @@
+:root {
+  /* Modern Color Palette */
+  --primary-color: #0ea5e9; /* Sky 500 */
+  --primary-hover: #0284c7; /* Sky 600 */
+  --secondary-color: #1d4ed8; /* Blue 600 */
+  --success-color: #10b981; /* Emerald 500 */
+  --warning-color: #fbbf24; /* Amber 400 */
+  --danger-color: #ef4444; /* Red 500 */
+  --info-color: #38bdf8; /* Sky 400 */
+
+  /* Neutral Colors */
+  --text-color: #0f172a; /* Navy */
+  --text-secondary: #0f4c81; /* Deep blue */
+  --text-muted: #94a3b8; /* Slate */
+
+  /* Backgrounds */
+  --background-color: #f4f7fb;
+  --surface-color: #ffffff;
+  --sidebar-bg: linear-gradient(180deg, #0f172a 0%, #0f4d9a 40%, #0ea5e9 100%);
+  --sidebar-text: #e0f2ff;
+
+  /* Borders */
+  --border-color: #dbeafe;
+  --border-focus: #0ea5e9;
+
+  /* Dimensions */
+  --sidebar-width: 280px;
+  --header-height: 64px;
+
+  /* Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
