@@ -152,6 +152,7 @@ function formatVietnamTime(value) {
   <section class="card page">
     <header class="page__header">
       <div>
+        <p class="eyebrow">Nội dung chính</p>
         <h2>Bài viết</h2>
         <p>Kiểm duyệt bài viết đã xuất bản, bản nháp và lịch lên sóng tại một nơi.</p>
       </div>

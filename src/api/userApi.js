@@ -29,9 +29,3 @@ export async function deleteUser(id) {
     method: 'DELETE',
   })
 }
-
-export async function removeUserRole(id, roleName) {
-  return http(`${RESOURCE}/${id}/roles/${roleName}`, {
-    method: 'DELETE',
-  })
-}

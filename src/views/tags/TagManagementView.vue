@@ -86,7 +86,7 @@ const handleSubmit = async () => {
   const slug = form.slug.trim()
 
   if (!name) {
-    formError.value = 'Vui lòng nhập tên thẻ.'
+    formError.value = 'Vui long nhap ten the.'
     return
   }
 
@@ -103,7 +103,7 @@ const handleSubmit = async () => {
     }
     startCreate()
   } catch (error) {
-    actionError.value = error?.message ?? 'Không thể lưu thẻ. Vui lòng thử lại.'
+    actionError.value = error?.message ?? 'Khong the luu the. Vui long thu lai.';
   } finally {
     isSubmitting.value = false
   }
@@ -111,7 +111,7 @@ const handleSubmit = async () => {
 
 const handleDelete = async (tag) => {
   actionError.value = ''
-  if (!window.confirm(`Bạn có chắc muốn xoá thẻ "${tag.displayName}"?`)) {
+  if (!window.confirm(`Ban co chac muon xoa the "${tag.displayName}"?`)) {
     return
   }
   deletingId.value = tag.id
@@ -121,7 +121,7 @@ const handleDelete = async (tag) => {
       startCreate()
     }
   } catch (error) {
-    actionError.value = error?.message ?? 'Không thể xoá thẻ. Vui lòng thử lại.'
+    actionError.value = error?.message ?? 'Khong the xoa the. Vui long thu lai.';
   } finally {
     deletingId.value = null
   }
@@ -132,14 +132,15 @@ const handleDelete = async (tag) => {
   <section class="card page">
     <header class="page__header">
       <div>
-        <h2>Quản lý thẻ</h2>
-        <p>Tổ chức bài viết bằng thẻ, tập trung hoặc hiển thị chủ đề dữ liệu.</p>
+        <p class="eyebrow">Th §¯ n ¯Ti dung</p>
+        <h2>QuA£n l ¯ý th §¯</h2>
+        <p>TA?i Ž?o bAÿi vi §¨t bA¼ng th §¯, t §_p trung ho §zc hi ¯Ÿn th ¯< ch ¯@ ¯? ¯Ÿ d ¯_ li ¯Øu.</p>
       </div>
       <div class="page__actions">
         <div class="page__search">
-          <AppSearchBar placeholder="Tìm thẻ..." @search="handleSearch" />
+          <AppSearchBar placeholder="TAªm th §¯..." @search="handleSearch" />
         </div>
-        <BaseButton v-if="editingTagId" variant="secondary" type="button" @click="startCreate">Thêm thẻ mới</BaseButton>
+        <BaseButton v-if="editingTagId" variant="secondary" type="button" @click="startCreate">ThAêm th §¯ m ¯>i</BaseButton>
       </div>
     </header>
 
@@ -149,17 +150,17 @@ const handleDelete = async (tag) => {
       <div class="tag-panel">
         <div class="tag-panel__header">
           <div>
-            <h3>Danh sách thẻ</h3>
-            <p class="muted-text">Đang hiển thị {{ filteredTags.length }} thẻ</p>
+            <h3>Danh sA¬ch th §¯</h3>
+            <p class="muted-text">Đang hi ¯Ÿn th ¯< {{ filteredTags.length }} th §¯</p>
           </div>
         </div>
-        <div v-if="store.isLoading" class="tag-panel__state">Đang tải thẻ...</div>
+        <div v-if="store.isLoading" class="tag-panel__state">Ž?ang t §œi th §¯...</div>
         <div v-else>
           <div class="tag-table__header">
-            <span>Tên thẻ</span>
+            <span>TA¦n th §¯</span>
             <span>Slug</span>
-            <span>SL sử dụng</span>
-            <span class="text-right">Thao tác</span>
+            <span>SL s ¯- d ¯ng</span>
+            <span class="text-right">Thao tA­c</span>
           </div>
           <div v-for="tag in filteredTags" :key="tag.id" class="tag-table__row" :class="{ 'is-active': editingTagId === tag.id }">
             <div class="cell">
@@ -173,27 +174,27 @@ const handleDelete = async (tag) => {
             </div>
             <div class="cell text-right">
               <div class="table-actions">
-                <button type="button" class="link" @click="startEdit(tag)">Chỉnh sửa</button>
+                <button type="button" class="link" @click="startEdit(tag)">Ch ¯%nh s ¯-a</button>
                 <span>&middot;</span>
                 <button type="button" class="link link--danger" :disabled="deletingId === tag.id" @click="handleDelete(tag)">
-                  {{ deletingId === tag.id ? 'Đang xoá...' : 'Xoá' }}
+                  {{ deletingId === tag.id ? 'Ž?ang xoAÿ...' : 'XoAÿ' }}
                 </button>
               </div>
             </div>
           </div>
-          <p v-if="!filteredTags.length" class="empty-state">Chưa có thẻ phù hợp.</p>
+          <p v-if="!filteredTags.length" class="empty-state">Ch’øa cA3 th §¯ phA1 h ¯œp.</p>
         </div>
       </div>
 
       <div class="tag-panel tag-panel--form">
-        <h3>{{ editingTagId ? 'Chỉnh sửa thẻ' : 'Thêm thẻ mới' }}</h3>
+        <h3>{{ editingTagId ? 'Ch ¯%nh s ¯-a th §¯' : 'ThAêm th §¯ m ¯>i' }}</h3>
         <p class="muted-text">
-          {{ editingTagId ? 'Cập nhật tên hoặc slug cho thẻ đang chỉnh.' : 'Tạo thẻ mới được sử dụng trong bài viết.' }}
+          {{ editingTagId ? 'C §-p nh §-t tA¦n ho §c slug cho th §¯ Žang ch ¯%nh.' : 'TAo th §¯ m ¯>i Ž?A¯?c s ¯- d ¯ng trong bAÿi vi §¨t.' }}
         </p>
         <form class="tag-form" @submit.prevent="handleSubmit">
           <div class="form-field">
-            <label for="tag-name">Tên thẻ</label>
-            <input id="tag-name" v-model="form.name" placeholder="Ví dụ: Tin tức" />
+            <label for="tag-name">TA¦n th §¯</label>
+            <input id="tag-name" v-model="form.name" placeholder="VA- d ¯: Tin t ¯cc" />
           </div>
           <div class="form-field">
             <label for="tag-slug">Slug</label>
@@ -201,9 +202,9 @@ const handleDelete = async (tag) => {
           </div>
           <p v-if="formError" class="form-error">{{ formError }}</p>
           <div class="form-actions">
-            <BaseButton variant="secondary" type="button" @click="startCreate">Huỷ</BaseButton>
+            <BaseButton variant="secondary" type="button" @click="startCreate">Hu ¯ỷ</BaseButton>
             <BaseButton type="submit" :disabled="isSubmitting">
-              {{ isSubmitting ? 'Đang lưu...' : editingTagId ? 'Cập nhật thẻ' : 'Thêm thẻ' }}
+              {{ isSubmitting ? 'Ž?ang l’øu...' : editingTagId ? 'C §-p nh §-t th §¯' : 'ThAêm th §¯' }}
             </BaseButton>
           </div>
         </form>

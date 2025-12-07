@@ -2,7 +2,10 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as tagApi from '@/api/tagApi'
 
-const initialTags = []
+const initialTags = [
+  { id: 1, name: 'news', display_name: 'Tin tuc' },
+  { id: 2, name: 'events', display_name: 'Su kien' },
+]
 
 export const useTagStore = defineStore('tag', () => {
   const tags = ref(initialTags)
@@ -30,7 +33,7 @@ export const useTagStore = defineStore('tag', () => {
       const remote = await tagApi.fetchTags()
       setTags(remote)
     } catch (err) {
-      error.value = err?.message ?? 'Không thể tải danh sách thẻ.';
+      error.value = err?.message ?? 'Khong the tai danh sach the.';
       console.error('Failed to load tags', err)
     } finally {
       isLoading.value = false
