@@ -81,7 +81,7 @@ const loadUser = async () => {
         : response.roles ?? (response.role ? [response.role] : []),
     }
   } catch (err: any) {
-    error.value = err?.message ?? 'Không thể tải thông tin người dùng.'
+    error.value = err?.message ?? 'Không thể tải thông tin người dùng.';
   } finally {
     isLoading.value = false
   }

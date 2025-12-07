@@ -2,23 +2,24 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as categoryApi from '@/api/categoryApi'
 
-const initialCategories = [
-  { id: 1, name: 'News', description: 'Company announcements' },
-  { id: 2, name: 'Guides', description: 'How-to articles' },
-]
+const initialCategories = []
 
 export const useCategoryStore = defineStore('category', () => {
   const categories = ref(initialCategories)
 
   async function fetchCategories() {
     const remote = await categoryApi.fetchCategories()
-    if (Array.isArray(remote) && remote.length) {
-      categories.value = remote
-    }
+    categories.value = Array.isArray(remote) ? remote : []
+  }
+
+  async function deleteCategory(id) {
+    await categoryApi.deleteCategory(id)
+    categories.value = categories.value.filter((item) => item.id !== id)
   }
 
   return {
     categories,
     fetchCategories,
+    deleteCategory,
   }
 })

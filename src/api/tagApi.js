@@ -3,11 +3,13 @@ import http from './httpClient'
 const RESOURCE = '/tags'
 
 export async function fetchTags() {
-  return http(RESOURCE)
+  // GET /tags (public, no auth)
+  return http(RESOURCE, { auth: false })
 }
 
 export async function fetchTagById(id) {
-  return http(`${RESOURCE}/${id}`)
+  // GET /tags/:id (public, no auth)
+  return http(`${RESOURCE}/${id}`, { auth: false })
 }
 
 export async function createTag(payload) {

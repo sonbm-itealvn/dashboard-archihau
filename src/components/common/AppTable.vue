@@ -69,6 +69,11 @@ const props = defineProps({
   font-size: 0.9rem;
 }
 
+.app-table th.text-right,
+.app-table td.text-right {
+  text-align: right;
+}
+
 .app-table tr:last-child td {
   border-bottom: none;
 }

@@ -43,7 +43,7 @@ export const useEventStore = defineStore('event', () => {
         events.value = remote
       }
     } catch (err) {
-      error.value = err?.message ?? 'Không thể tải danh sách sự kiện.'
+      error.value = err?.message ?? 'Không thể tải danh sách sự kiện.';
       console.error(err)
     } finally {
       isLoading.value = false

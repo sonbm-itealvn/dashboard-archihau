@@ -18,7 +18,7 @@ const loadCategory = async () => {
     const data = await fetchCategoryById(route.params.id)
     category.value = data
   } catch (err) {
-    error.value = err?.message ?? 'Không thể tải thông tin danh mục.'
+    error.value = err?.message ?? 'Không thể tải thông tin danh mục.';
   } finally {
     isLoading.value = false
   }

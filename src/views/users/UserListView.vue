@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import AppTable from '@/components/common/AppTable.vue'
 import AppSearchBar from '@/components/common/AppSearchBar.vue'
@@ -14,6 +15,10 @@ onMounted(() => {
 })
 
 const keyword = ref('')
+const isConfirmOpen = ref(false)
+const isDeleting = ref(false)
+const userToDelete = ref(null)
+const localError = ref('')
 
 const ROLE_LABELS = {
   manager: 'Quản lý',
@@ -44,14 +49,40 @@ const rows = computed(() => {
 const handleSearch = (value) => {
   keyword.value = value ?? ''
 }
+
+const openDelete = (user) => {
+  userToDelete.value = user
+  isConfirmOpen.value = true
+  localError.value = ''
+}
+
+const confirmDelete = async () => {
+  if (!userToDelete.value) return
+  isDeleting.value = true
+  localError.value = ''
+
+  const roleName =
+    Array.isArray(userToDelete.value.roles) && userToDelete.value.roles.length
+      ? userToDelete.value.roles[0]
+      : 'manager'
+
+  try {
+    await store.removeRoleFromUser(userToDelete.value.id, roleName)
+    isConfirmOpen.value = false
+    userToDelete.value = null
+  } catch (err) {
+    localError.value = err?.message ?? 'Không thể xóa người dùng.'
+  } finally {
+    isDeleting.value = false
+  }
+}
 </script>
 
 <template>
   <section class="card page">
     <header class="page__header">
       <div>
-        <p class="eyebrow">Quản lý người dùng</p>
-        <h2>Người dùng</h2>
+        <h2>Quản lý người dùng</h2>
         <p>Kiểm soát quyền truy cập và vai trò trên toàn hệ thống.</p>
       </div>
       <div class="page__actions">
@@ -65,7 +96,10 @@ const handleSearch = (value) => {
     <div v-if="store.error" class="alert">
       {{ store.error }}
     </div>
-    <AppTable v-else :columns="columns" :rows="rows">
+    <div v-if="!store.error && localError" class="alert">
+      {{ localError }}
+    </div>
+    <AppTable v-if="!store.error" :columns="columns" :rows="rows">
       <template #cell-roles="{ value }">
         {{ (value ?? []).map((role) => ROLE_LABELS[role] ?? role).join(', ') }}
       </template>
@@ -77,9 +111,24 @@ const handleSearch = (value) => {
           <BaseButton size="sm" variant="outline" @click="router.push({ name: 'user-edit', params: { id: row.id } })">
             Sửa
           </BaseButton>
+          <BaseButton
+            size="sm"
+            variant="danger"
+            :disabled="isDeleting && userToDelete?.id === row.id"
+            @click="openDelete(row)"
+          >
+            {{ isDeleting && userToDelete?.id === row.id ? 'Đang xóa...' : 'Xóa' }}
+          </BaseButton>
         </div>
       </template>
     </AppTable>
+
+    <ConfirmDialog
+      v-model="isConfirmOpen"
+      title="Xóa người dùng"
+      :message="`Bạn có chắc muốn xóa ${userToDelete?.name ?? 'người dùng này'}?`"
+      @confirm="confirmDelete"
+    />
   </section>
 </template>
 
@@ -130,7 +179,14 @@ const handleSearch = (value) => {
 
 .actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.text-right {
+  text-align: right;
 }
 </style>

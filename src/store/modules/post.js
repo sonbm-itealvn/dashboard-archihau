@@ -19,7 +19,7 @@ export const usePostStore = defineStore('post', () => {
       const remote = await postApi.fetchPosts()
       posts.value = Array.isArray(remote) ? remote : []
     } catch (err) {
-      error.value = err?.message ?? 'Không thể tải danh sách bài viết.'
+      error.value = err?.message ?? 'Không thể tải danh sách bài viết.';
       console.error('Failed to fetch posts', err)
     } finally {
       isLoading.value = false

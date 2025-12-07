@@ -71,7 +71,7 @@ onMounted(async () => {
       const user = await fetchUserById(route.params.id)
       populateForm(user)
     } catch (error) {
-      formError.value = error?.message ?? 'Không thể tải thông tin người dùng.'
+      formError.value = error?.message ?? 'Không thể tải thông tin người dùng.';
     } finally {
       isLoading.value = false
     }
@@ -113,7 +113,7 @@ const submit = async () => {
     }
     router.push({ name: 'user-list' })
   } catch (error) {
-    formError.value = error?.message ?? 'Không thể lưu người dùng.'
+    formError.value = error?.message ?? 'Không thể lưu người dùng.';
   } finally {
     isSubmitting.value = false
   }

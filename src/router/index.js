@@ -11,6 +11,7 @@ import PostFormView from '@/views/posts/PostFormView.vue'
 import CategoryListView from '@/views/categories/CategoryListView.vue'
 import CategoryFormView from '@/views/categories/CategoryFormView.vue'
 import CategoryDetailView from '@/views/categories/CategoryDetailView.vue'
+import TagManagementView from '@/views/tags/TagManagementView.vue'
 import MediaLibraryView from '@/views/media/MediaLibraryView.vue'
 import MediaDetailView from '@/views/media/MediaDetailView.vue'
 import EventListView from '@/views/events/EventListView.vue'
@@ -40,6 +41,7 @@ const router = createRouter({
         { path: 'categories/new', name: 'category-form', component: CategoryFormView },
         { path: 'categories/:id', name: 'category-detail', component: CategoryDetailView },
         { path: 'categories/:id/edit', name: 'category-edit', component: CategoryFormView },
+        { path: 'tags', name: 'tag-list', component: TagManagementView },
         { path: 'media', name: 'media-library', component: MediaLibraryView },
         { path: 'media/:id', name: 'media-detail', component: MediaDetailView },
         { path: 'events', name: 'event-list', component: EventListView },
