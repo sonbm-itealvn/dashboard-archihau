@@ -57,7 +57,7 @@ const loadEvent = async () => {
   try {
     event.value = await fetchEventById(route.params.id)
   } catch (err) {
-    error.value = err?.message ?? 'Không thể tải sự kiện.'
+    error.value = err?.message ?? 'Không thể tải sự kiện.';
   } finally {
     isLoading.value = false
   }

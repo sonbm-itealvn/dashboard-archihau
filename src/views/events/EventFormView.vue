@@ -120,7 +120,7 @@ const handleSubmit = async () => {
     }
     router.push({ name: 'event-list' })
   } catch (error) {
-    formError.value = error?.message ?? 'Không thể tạo sự kiện. Vui lòng thử lại.'
+    formError.value = error?.message ?? 'Không thể tạo sự kiện. Vui lòng thử lại.';
   } finally {
     isSubmitting.value = false
   }

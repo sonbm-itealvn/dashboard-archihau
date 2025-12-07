@@ -13,7 +13,7 @@ const submit = async () => {
   try {
     await login(form)
   } catch (err) {
-    error.value = err?.message ?? 'Không thể đăng nhập'
+    error.value = err?.message ?? 'Không thể đăng nhập';
   }
 }
 </script>

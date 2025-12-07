@@ -42,9 +42,9 @@ export const useUserStore = defineStore('user', () => {
       }
     } catch (err) {
       if (err?.status === 403) {
-        error.value = 'Bạn không có quyền truy cập danh sách người dùng.'
+        error.value = 'Bạn không có quyền truy cập danh sách người dùng.';
       } else {
-        error.value = err?.message ?? 'Không thể tải danh sách người dùng.'
+        error.value = err?.message ?? 'Không thể tải danh sách người dùng.';
       }
     }
   }
