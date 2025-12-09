@@ -1,6 +1,6 @@
 import http from './httpClient'
 
-const RESOURCE = '/media'
+const RESOURCE = '/uploads'
 
 export async function fetchMedia() {
   return http(RESOURCE)
@@ -11,6 +11,7 @@ export async function fetchMediaById(id) {
 }
 
 export async function uploadMedia(formData) {
+  // POST /uploads expects multipart/form-data with field "file"
   return http(RESOURCE, {
     method: 'POST',
     body: formData,

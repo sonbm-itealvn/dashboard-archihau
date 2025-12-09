@@ -3,7 +3,8 @@ import http from './httpClient'
 const RESOURCE = '/events'
 
 export async function fetchEvents() {
-  return http(RESOURCE)
+  // Fetch all non-deleted events sorted by start_time DESC
+  return http(`${RESOURCE}/all`)
 }
 
 export async function fetchEventById(id) {
