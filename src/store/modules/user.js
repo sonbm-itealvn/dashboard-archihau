@@ -53,11 +53,26 @@ export const useUserStore = defineStore('user', () => {
     selectedUser.value = users.value.find((user) => String(user.id) === String(id)) ?? null
   }
 
+  async function removeRoleFromUser(id, roleName) {
+    error.value = ''
+    try {
+      await userApi.removeUserRole(id, roleName)
+      users.value = users.value.filter((user) => String(user.id) !== String(id))
+      if (selectedUser.value && String(selectedUser.value.id) === String(id)) {
+        selectedUser.value = null
+      }
+    } catch (err) {
+      error.value = err?.message ?? 'Không thể xóa người dùng.'
+      throw err
+    }
+  }
+
   return {
     users,
     selectedUser,
     error,
     fetchUsers,
     selectUser,
+    removeRoleFromUser,
   }
 })

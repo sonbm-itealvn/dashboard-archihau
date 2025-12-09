@@ -50,7 +50,7 @@ const props = defineProps({
 }
 
 .app-table th {
-  padding: 1rem 1.5rem;
+  padding: 1rem 1.25rem;
   text-align: left;
   background: rgba(14, 165, 233, 0.08);
   color: var(--text-secondary);
@@ -62,11 +62,16 @@ const props = defineProps({
 }
 
 .app-table td {
-  padding: 1rem 1.5rem;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-color);
   vertical-align: middle;
   font-size: 0.9rem;
+}
+
+.app-table th.text-right,
+.app-table td.text-right {
+  text-align: right;
 }
 
 .app-table tr:last-child td {

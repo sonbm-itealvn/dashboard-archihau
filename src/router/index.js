@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import LoginView from '@/views/auth/LoginView.vue'
 import RegisterView from '@/views/auth/RegisterView.vue'
@@ -21,7 +21,8 @@ import tokenService from '@/services/tokenService'
 import { useAuthStore } from '@/store/modules/auth'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  // Use hash history to avoid server rewrite requirements on refresh.
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/login', name: 'login', component: LoginView, meta: { public: true } },
     { path: '/register', name: 'register', component: RegisterView, meta: { public: true } },

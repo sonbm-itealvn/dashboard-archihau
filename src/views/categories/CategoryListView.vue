@@ -40,6 +40,17 @@ const openDetail = (category) => {
 const openEdit = (category) => {
   router.push({ name: 'category-edit', params: { id: category.id } })
 }
+
+const displayName = (category) => category.display_name ?? category.name ?? 'Danh mục'
+const initials = (category) => {
+  const name = displayName(category)
+  return name
+    .split(' ')
+    .map((word) => word?.[0] ?? '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
 </script>
 
 <template>
@@ -58,36 +69,42 @@ const openEdit = (category) => {
       </div>
     </header>
 
-    <div class="category-table">
-      <div class="category-table__header">
-        <span>Danh mục</span>
-        <span>Slug</span>
-        <span>Số lượt sử dụng</span>
-        <span class="text-right">Thao tác</span>
+    <div class="board">
+      <div class="board__head">
+        <div class="pill">Tổng cộng <strong>{{ filteredCategories.length }}</strong> danh mục</div>
+        <p class="muted-text">Xem nhanh slug, số bài viết và thao tác.</p>
       </div>
 
-      <div v-for="category in filteredCategories" :key="category.id" class="category-table__row">
-        <div class="cell cell-name">
-          <p class="name">{{ category.display_name ?? category.name ?? '—' }}</p>
+      <div v-if="filteredCategories.length" class="table-shell">
+        <div class="table-header">
+          <span>Danh mục</span>
+          <span>Slug</span>
+          <span class="text-center">Số bài viết</span>
+          <span class="text-right">Thao tác</span>
         </div>
-        <div class="cell">
-          <p class="muted-text">{{ category.slug ?? '—' }}</p>
-        </div>
-        <div class="cell text-center">
-          <span class="count-pill">{{ category.postCount }}</span>
-        </div>
-        <div class="cell text-right">
-          <div class="table-actions">
-            <button type="button" class="link" @click="openDetail(category)">Xem</button>
-            <span>&middot;</span>
-            <button type="button" class="link" @click="openEdit(category)">Chỉnh sửa</button>
+
+        <div v-for="category in filteredCategories" :key="category.id" class="table-row">
+          <div class="cell cell-name">
+            <div class="info">
+              <p class="name">{{ displayName(category) }}</p>
+            </div>
+          </div>
+          <div class="cell">
+            <span class="badge badge-ghost">{{ category.slug ?? '—' }}</span>
+          </div>
+          <div class="cell text-center">
+            <span class="chip">{{ category.postCount }} bài viết</span>
+          </div>
+          <div class="cell text-right">
+            <div class="row-actions">
+              <BaseButton size="sm" variant="ghost" @click="openDetail(category)">Xem</BaseButton>
+              <BaseButton size="sm" variant="outline" @click="openEdit(category)">Chỉnh sửa</BaseButton>
+            </div>
           </div>
         </div>
       </div>
 
-      <p v-if="!filteredCategories.length" class="empty-state">
-        Không tìm thấy danh mục phù hợp. Vui lòng thử từ khóa khác.
-      </p>
+      <p v-else class="empty-state">Không tìm thấy danh mục phù hợp. Vui lòng thử từ khóa khác.</p>
     </div>
   </section>
 </template>
@@ -129,8 +146,32 @@ const openEdit = (category) => {
   margin-bottom: 0.25rem;
 }
 
-.category-table {
+.board {
   margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.board__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(14, 165, 233, 0.12);
+  color: #0f4c81;
+  font-weight: 600;
+}
+
+.table-shell {
   border: 1px solid rgba(14, 165, 233, 0.15);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -138,42 +179,97 @@ const openEdit = (category) => {
   background: #fff;
 }
 
-.category-table__header,
-.category-table__row {
+.table-header,
+.table-row {
   display: grid;
-  grid-template-columns: minmax(160px, 2fr) minmax(200px, 3fr) 120px 140px;
+  grid-template-columns: minmax(220px, 3fr) minmax(180px, 2fr) 140px 220px;
   gap: 1rem;
   padding: 1rem 1.25rem;
   align-items: center;
 }
 
-.category-table__header {
+.table-header {
   background: rgba(14, 165, 233, 0.08);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #3b4a5a;
 }
 
-.category-table__row {
+.table-row {
   border-top: 1px solid rgba(219, 234, 254, 0.8);
 }
 
-.category-table__row:nth-child(even) {
-  background: rgba(15, 76, 129, 0.02);
+.table-row:nth-child(odd) {
+  background: rgba(14, 165, 233, 0.03);
+}
+
+.table-row:hover {
+  background: rgba(14, 165, 233, 0.06);
 }
 
 .cell {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
-.cell-name .name {
-  font-weight: 600;
+.cell-name .info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  background: rgba(14, 165, 233, 0.14);
+  color: #0f4c81;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.name {
   margin: 0;
+  font-weight: 700;
   color: #0f172a;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-full);
+  background: rgba(15, 76, 129, 0.08);
+  color: #0f4c81;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.badge-ghost {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0f4c81;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-full);
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  font-weight: 700;
+  min-width: 110px;
 }
 
 .muted-text {
@@ -184,43 +280,18 @@ const openEdit = (category) => {
 
 .text-center {
   justify-content: center;
-  align-items: center;
 }
 
 .text-right {
   justify-content: flex-end;
 }
 
-.table-actions {
+.row-actions {
   display: flex;
-  gap: 0.85rem;
   align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   justify-content: flex-end;
-  font-size: 0.9rem;
-}
-
-.link {
-  border: none;
-  background: none;
-  color: #0f6ddf;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.link:hover {
-  text-decoration: underline;
-}
-
-.count-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-full);
-  background: rgba(14, 165, 233, 0.15);
-  color: #0f4c81;
-  font-weight: 600;
-  min-width: 36px;
 }
 
 .empty-state {
@@ -236,13 +307,13 @@ const openEdit = (category) => {
     justify-content: stretch;
   }
 
-  .category-table__header,
-  .category-table__row {
+  .table-header,
+  .table-row {
     grid-template-columns: 1fr;
   }
 
-.category-table__row {
-  row-gap: 0.5rem;
-}
+  .row-actions {
+    justify-content: flex-start;
+  }
 }
 </style>
