@@ -12,11 +12,11 @@ export const usePostStore = defineStore('post', () => {
   const error = ref('')
   const isLoading = ref(false)
 
-  async function fetchPosts() {
+  async function fetchPosts(params) {
     error.value = ''
     isLoading.value = true
     try {
-      const remote = await postApi.fetchPosts()
+      const remote = await postApi.fetchPosts(params)
       posts.value = Array.isArray(remote) ? remote : []
     } catch (err) {
       error.value = err?.message ?? 'Không thể tải danh sách bài viết.';

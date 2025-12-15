@@ -2,8 +2,19 @@ import http from './httpClient'
 
 const RESOURCE = '/posts'
 
-export async function fetchPosts() {
-  return http(RESOURCE)
+const buildQuery = (params = {}) => {
+  const search = new URLSearchParams()
+  if (Array.isArray(params.category_ids) && params.category_ids.length) {
+    search.set('category_ids', params.category_ids.join(','))
+  } else if (typeof params.category_ids === 'string' && params.category_ids.trim()) {
+    search.set('category_ids', params.category_ids.trim())
+  }
+  const query = search.toString()
+  return query ? `${RESOURCE}?${query}` : RESOURCE
+}
+
+export async function fetchPosts(params) {
+  return http(buildQuery(params))
 }
 
 export async function fetchPostById(id) {

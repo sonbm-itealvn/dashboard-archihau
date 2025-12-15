@@ -19,6 +19,10 @@ const isSubmitting = ref(false)
 const isLoading = ref(false)
 const thumbnailInputRef = ref(null)
 const thumbnailError = ref('')
+const contentImageInputRef = ref(null)
+const contentVideoInputRef = ref(null)
+const mediaUrl = ref('')
+const mediaUrlType = ref('image')
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Bản nháp' },
@@ -41,6 +45,7 @@ const form = reactive({
 const isEditing = computed(() => Boolean(route.params.id))
 const thumbnailPreview = computed(() => form.thumbnail?.trim() || '')
 const isUploadingThumbnail = computed(() => mediaStore.isUploading)
+const isUploadingContent = computed(() => mediaStore.isUploading)
 
 const goBack = () => {
   router.push({ name: 'post-list' })
@@ -163,6 +168,42 @@ const handleThumbnailFileChange = async (event) => {
   } catch (error) {
     thumbnailError.value = error?.message ?? 'Tải ảnh đại diện thất bại.'
   }
+}
+
+const triggerContentPicker = (type) => {
+  if (type === 'image') {
+    contentImageInputRef.value?.click()
+  } else {
+    contentVideoInputRef.value?.click()
+  }
+}
+
+const insertMediaUrl = (url, type) => {
+  if (!url) return
+  const safeUrl = url.trim()
+  if (!safeUrl) return
+  const isVideo = type === 'video'
+  const html = isVideo
+    ? `<figure class="media"><video controls src="${safeUrl}" style="max-width:100%;height:auto;"></video></figure>`
+    : `<figure class="image"><img src="${safeUrl}" alt="" style="max-width:100%;height:auto;" /></figure>`
+  form.body = `${form.body ?? ''}\n${html}\n`
+}
+
+const handleContentFileChange = async (type, event) => {
+  const [file] = event.target.files ?? []
+  event.target.value = ''
+  if (!file) return
+  try {
+    const uploaded = await mediaStore.uploadMedia({ file, resourceType: type })
+    insertMediaUrl(uploaded?.url ?? '', type)
+  } catch (error) {
+    alert(error?.message ?? 'Không thể tải tệp.')
+  }
+}
+
+const handleInsertMediaUrl = () => {
+  insertMediaUrl(mediaUrl.value, mediaUrlType.value)
+  mediaUrl.value = ''
 }
 
 const handleSubmit = async () => {
@@ -315,6 +356,58 @@ const handleSubmit = async () => {
       <div class="form-card">
         <div class="form-field">
           <label for="body">Nội dung chi tiết</label>
+          <div class="media-toolbar">
+            <div class="media-toolbar__header">
+              <div>
+                <p class="media-toolbar__title">Chèn media vào nội dung</p>
+                <p class="media-toolbar__hint">Upload trực tiếp hoặc dán URL ảnh/video. Media sẽ hiển thị ngay trong bài.</p>
+              </div>
+            </div>
+            <div class="media-toolbar__body">
+              <div class="media-toolbar__left">
+                <BaseButton
+                  size="sm"
+                  variant="outline"
+                  type="button"
+                  :disabled="isUploadingContent"
+                  @click="triggerContentPicker('image')"
+                >
+                  {{ isUploadingContent ? 'Đang tải...' : 'Chèn ảnh' }}
+                </BaseButton>
+                <BaseButton
+                  size="sm"
+                  variant="outline"
+                  type="button"
+                  :disabled="isUploadingContent"
+                  @click="triggerContentPicker('video')"
+                >
+                  {{ isUploadingContent ? 'Đang tải...' : 'Chèn video' }}
+                </BaseButton>
+                <input
+                  ref="contentImageInputRef"
+                  type="file"
+                  accept="image/*"
+                  style="display: none"
+                  @change="(e) => handleContentFileChange('image', e)"
+                />
+                <input
+                  ref="contentVideoInputRef"
+                  type="file"
+                  accept="video/*"
+                  style="display: none"
+                  @change="(e) => handleContentFileChange('video', e)"
+                />
+              </div>
+              <div class="media-toolbar__right">
+                <select v-model="mediaUrlType" class="media-select">
+                  <option value="image">Ảnh</option>
+                  <option value="video">Video</option>
+                </select>
+                <input v-model="mediaUrl" class="media-url-input" placeholder="Dán URL ảnh/video..." />
+                <BaseButton size="sm" type="button" @click="handleInsertMediaUrl">Chèn URL</BaseButton>
+              </div>
+            </div>
+          </div>
           <div class="rich-editor">
             <ckeditor v-model="form.body" :editor="Editor" :config="editorConfig" />
           </div>
@@ -410,6 +503,72 @@ const handleSubmit = async () => {
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: #fff;
+}
+
+.media-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(14, 165, 233, 0.02));
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
+}
+
+.media-toolbar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.media-toolbar__title {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.media-toolbar__hint {
+  margin: 0.1rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.media-toolbar__left {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.media-toolbar__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.media-toolbar__right {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.media-select {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.45rem 0.6rem;
+  background: #fff;
+}
+
+.media-url-input {
+  min-width: 200px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.45rem 0.6rem;
 }
 
 .rich-editor :deep(.ck-toolbar) {

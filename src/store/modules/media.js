@@ -113,6 +113,17 @@ export const useMediaStore = defineStore('media', () => {
     }
   }
 
+  async function deleteMedia(id) {
+    if (!id) throw new Error('Thiếu id media để xóa.')
+    try {
+      await mediaApi.deleteMedia(id)
+      mediaItems.value = mediaItems.value.filter((item) => item.id !== id)
+    } catch (err) {
+      console.error('Failed to delete media', err)
+      throw err
+    }
+  }
+
   return {
     mediaItems,
     isUploading,
@@ -120,5 +131,6 @@ export const useMediaStore = defineStore('media', () => {
     fetchMedia,
     uploadMedia,
     uploadMediaBatch,
+    deleteMedia,
   }
 })

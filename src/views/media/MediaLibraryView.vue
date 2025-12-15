@@ -19,6 +19,7 @@ const showUploadModal = ref(false)
 const selectedFiles = ref([])
 const dragActive = ref(false)
 const detailItem = ref(null)
+const deletingId = ref(null)
 
 const typeLabels = {
   Image: 'Hình ảnh',
@@ -113,6 +114,22 @@ const openDetail = (item) => {
 
 const closeDetail = () => {
   detailItem.value = null
+}
+
+const handleDelete = async (item) => {
+  if (!item?.id) return
+  if (!window.confirm(`Bạn có chắc muốn xóa tệp "${item.name}"?`)) return
+  deletingId.value = item.id
+  try {
+    await store.deleteMedia(item.id)
+    if (detailItem.value?.id === item.id) {
+      closeDetail()
+    }
+  } catch (error) {
+    alert(error?.message ?? 'Không thể xóa tệp. Vui lòng thử lại.')
+  } finally {
+    deletingId.value = null
+  }
 }
 
 onMounted(() => {
@@ -240,6 +257,17 @@ onMounted(() => {
               <p><strong>Định dạng:</strong> {{ detailItem.format ?? '—' }}</p>
               <p><strong>Kích thước ảnh:</strong> {{ detailItem.width && detailItem.height ? `${detailItem.width} x ${detailItem.height}px` : '—' }}</p>
               <p><strong>URL:</strong> <a :href="detailItem.previewUrl" target="_blank" rel="noreferrer">Mở trong tab mới</a></p>
+              <div class="detail-actions">
+                <BaseButton
+                  size="sm"
+                  variant="danger"
+                  type="button"
+                  :disabled="deletingId === detailItem.id"
+                  @click="handleDelete(detailItem)"
+                >
+                  {{ deletingId === detailItem.id ? 'Đang xóa...' : 'Xóa tệp' }}
+                </BaseButton>
+              </div>
             </div>
           </div>
         </div>
@@ -507,5 +535,11 @@ onMounted(() => {
 .upload-detail__meta {
   margin: 0.25rem 0 0;
   color: var(--text-muted);
+}
+
+.detail-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
 }
 </style>

@@ -5,16 +5,23 @@ import { useRouter } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import AppSearchBar from '@/components/common/AppSearchBar.vue'
 import { usePostStore } from '@/store/modules/post'
+import { useCategoryStore } from '@/store/modules/category'
 
 const router = useRouter()
 const store = usePostStore()
+const categoryStore = useCategoryStore()
 const { posts, error: loadError, isLoading } = storeToRefs(store)
+const { categories } = storeToRefs(categoryStore)
 
 onMounted(() => {
+  categoryStore.fetchCategories()
   store.fetchPosts()
 })
 
 const keyword = ref('')
+const selectedCategoryIds = ref([])
+const isFiltering = ref(false)
+const selectedCount = computed(() => selectedCategoryIds.value.length)
 
 const STATUS_TEXTS = {
   draft: 'Bản nháp',
@@ -40,6 +47,29 @@ const filteredPosts = computed(() => {
 
 const handleSearch = (value) => {
   keyword.value = value ?? ''
+}
+
+const applyCategoryFilter = async () => {
+  isFiltering.value = true
+  try {
+    const ids = selectedCategoryIds.value.filter((id) => id !== null && id !== undefined && id !== '')
+    await store.fetchPosts(ids.length ? { category_ids: ids } : undefined)
+  } finally {
+    isFiltering.value = false
+  }
+}
+
+const clearCategoryFilter = () => {
+  selectedCategoryIds.value = []
+  applyCategoryFilter()
+}
+
+const toggleCategory = (id) => {
+  if (selectedCategoryIds.value.includes(id)) {
+    selectedCategoryIds.value = selectedCategoryIds.value.filter((item) => item !== id)
+  } else {
+    selectedCategoryIds.value = [...selectedCategoryIds.value, id]
+  }
 }
 
 const handleCreate = () => {
@@ -164,6 +194,43 @@ function formatVietnamTime(value) {
       </div>
     </header>
 
+    <div class="filters-bar">
+      <div class="filter-group">
+        <div class="filter-label">
+          <span>Lọc theo danh mục</span>
+          <span v-if="selectedCount" class="filter-count">{{ selectedCount }} đã chọn</span>
+        </div>
+        <div class="filter-chips">
+          <button
+            v-for="category in categories"
+            :key="category.id"
+            type="button"
+            class="filter-chip"
+            :class="{ 'is-active': selectedCategoryIds.includes(category.id) }"
+            @click="toggleCategory(category.id)"
+          >
+            <span class="dot" aria-hidden="true"></span>
+            <span>{{ category.display_name ?? category.name }}</span>
+          </button>
+          <span v-if="!categories.length" class="muted-text">Chưa có danh mục.</span>
+        </div>
+      </div>
+      <div class="filter-actions">
+        <BaseButton size="sm" :disabled="isFiltering" @click="applyCategoryFilter">
+          {{ isFiltering ? 'Đang lọc...' : 'Lọc' }}
+        </BaseButton>
+        <BaseButton
+          size="sm"
+          variant="secondary"
+          type="button"
+          :disabled="isFiltering || !selectedCategoryIds.length"
+          @click="clearCategoryFilter"
+        >
+          Xóa lọc
+        </BaseButton>
+      </div>
+    </div>
+
     <div class="post-table-wrapper">
       <div v-if="isLoading" class="table-state">Đang tải dữ liệu bài viết...</div>
       <div v-else-if="loadError" class="table-state table-state--error">{{ loadError }}</div>
@@ -270,6 +337,91 @@ function formatVietnamTime(value) {
   gap: 1rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  background: #fff;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 260px;
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(15, 76, 129, 0.16);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-chip .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(15, 76, 129, 0.35);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.filter-chip.is-active {
+  border-color: var(--primary-color);
+  background: rgba(14, 165, 233, 0.14);
+  color: #0f4c81;
+  box-shadow: 0 8px 18px rgba(15, 76, 129, 0.1);
+}
+
+.filter-chip.is-active .dot {
+  background: var(--primary-color);
+  transform: scale(1.25);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  background: rgba(14, 165, 233, 0.12);
+  color: #0f6ddf;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .page__search {
@@ -478,5 +630,12 @@ function formatVietnamTime(value) {
 
 .table-state--error {
   color: var(--danger-color);
+}
+
+@media (max-width: 640px) {
+  .filters-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>
