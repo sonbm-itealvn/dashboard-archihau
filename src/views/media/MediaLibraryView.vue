@@ -33,7 +33,8 @@ const displayedMedia = computed(() => {
     ...item,
     displayType: typeLabels[item.type] ?? item.type ?? 'Khác',
     displaySize: item.size ?? '—',
-    previewUrl: item.url ?? '',
+    previewUrl: item.url ?? item.secure_url ?? item.path ?? '',
+    isVideo: String(item.resourceType ?? item.type).toLowerCase() === 'video',
     uploadedByName: item.uploadedBy?.full_name ?? item.uploadedBy?.username ?? item.uploaded_by?.full_name ?? item.uploaded_by?.username ?? 'Không rõ',
     uploadedAtLabel: item.uploadedAt ? new Date(item.uploadedAt).toLocaleString('vi-VN') : '',
   }))
@@ -175,8 +176,13 @@ onMounted(() => {
         class="media__item"
         @click="openDetail(item)"
       >
-        <div class="media__thumb" :style="item.previewUrl ? { backgroundImage: `url(${item.previewUrl})` } : {}">
-          <span v-if="!item.previewUrl" class="media__icon">{{ (item.displayType ?? '').charAt(0) }}</span>
+        <div class="media__thumb" :style="item.previewUrl && !item.isVideo ? { backgroundImage: `url(${item.previewUrl})` } : {}">
+          <template v-if="item.isVideo">
+            <div class="media__video-thumb">
+              <span class="media__icon media__icon--video">▶</span>
+            </div>
+          </template>
+          <span v-else-if="!item.previewUrl" class="media__icon">{{ (item.displayType ?? '').charAt(0) }}</span>
         </div>
         <div class="media__info">
           <h3>{{ item.name }}</h3>
@@ -248,7 +254,13 @@ onMounted(() => {
 
           <div class="upload-detail__body">
             <div class="upload-detail__preview">
-              <img v-if="detailItem.previewUrl" :src="detailItem.previewUrl" alt="" />
+              <video
+                v-if="detailItem.isVideo && detailItem.previewUrl"
+                :src="detailItem.previewUrl"
+                controls
+                style="width: 100%; height: 100%; object-fit: contain; background: #0f172a"
+              />
+              <img v-else-if="detailItem.previewUrl" :src="detailItem.previewUrl" alt="" />
               <div v-else class="upload-detail__placeholder">{{ (detailItem.displayType ?? '').charAt(0) }}</div>
             </div>
             <div class="upload-detail__info">
@@ -362,6 +374,16 @@ onMounted(() => {
   overflow: hidden;
 }
 
+.media__video-thumb {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
 .media__icon {
   width: 48px;
   height: 48px;
@@ -373,6 +395,14 @@ onMounted(() => {
   justify-content: center;
   font-weight: 700;
   font-size: 1rem;
+}
+
+.media__icon--video {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(14, 165, 233, 0.18);
+  color: var(--primary-hover);
 }
 
 .media__info h3 {

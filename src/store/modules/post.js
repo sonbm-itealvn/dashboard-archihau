@@ -26,10 +26,21 @@ export const usePostStore = defineStore('post', () => {
     }
   }
 
+  async function deletePost(id) {
+    try {
+      await postApi.deletePost(id)
+      posts.value = posts.value.filter((post) => post.id !== id)
+    } catch (err) {
+      console.error('Failed to delete post', err)
+      throw err
+    }
+  }
+
   return {
     posts,
     error,
     isLoading,
     fetchPosts,
+    deletePost,
   }
 })

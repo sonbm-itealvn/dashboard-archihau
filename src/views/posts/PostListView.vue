@@ -22,6 +22,7 @@ const keyword = ref('')
 const selectedCategoryIds = ref([])
 const isFiltering = ref(false)
 const selectedCount = computed(() => selectedCategoryIds.value.length)
+const deletingId = ref(null)
 
 const STATUS_TEXTS = {
   draft: 'Bản nháp',
@@ -92,8 +93,17 @@ const handleQuickEdit = () => {
   showPlaceholder('Tính năng "Sửa nhanh" sẽ được bổ sung trong phiên bản tới.')
 }
 
-const handleTrash = () => {
-  showPlaceholder('Tính năng "Xóa tạm" sẽ được bổ sung trong phiên bản tới.')
+const handleDelete = async (post) => {
+  if (!post?.id) return
+  if (!window.confirm(`Bạn có chắc muốn xóa bài viết "${post.title}"?`)) return
+  deletingId.value = post.id
+  try {
+    await store.deletePost(post.id)
+  } catch (error) {
+    showPlaceholder(error?.message ?? 'Không thể xóa bài viết.')
+  } finally {
+    deletingId.value = null
+  }
 }
 
 const handlePreview = (post) => {
@@ -274,7 +284,14 @@ function formatVietnamTime(value) {
                   <span aria-hidden="true">&middot;</span>
                   <button type="button" class="link-action" @click="handleQuickEdit">Sửa nhanh</button>
                   <span aria-hidden="true">&middot;</span>
-                  <button type="button" class="link-action is-danger" @click="handleTrash">Xóa tạm</button>
+                  <button
+                    type="button"
+                    class="link-action is-danger"
+                    :disabled="deletingId === post.id"
+                    @click="handleDelete(post)"
+                  >
+                    {{ deletingId === post.id ? 'Đang xóa...' : 'Xóa' }}
+                  </button>
                   <span aria-hidden="true">&middot;</span>
                   <button type="button" class="link-action" @click="handlePreview(post)">Xem</button>
                 </div>

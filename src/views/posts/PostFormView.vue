@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, computed, onMounted, ref } from 'vue'
+import { reactive, computed, onMounted, ref, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
@@ -23,6 +23,8 @@ const contentImageInputRef = ref(null)
 const contentVideoInputRef = ref(null)
 const mediaUrl = ref('')
 const mediaUrlType = ref('image')
+const editorRef = ref(null)
+const insertedMedia = ref([]) // Lưu media đã chèn để preview và merge khi submit
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Bản nháp' },
@@ -135,7 +137,25 @@ const editorConfig = {
     'redo',
   ],
   placeholder: 'Nhập nội dung bài viết...',
+  htmlSupport: {
+    allow: [
+      {
+        name: /.*/,
+        attributes: true,
+        classes: true,
+        styles: true,
+      },
+    ],
+  },
 }
+
+const handleEditorReady = (editor) => {
+  editorRef.value = editor
+}
+
+onBeforeUnmount(() => {
+  editorRef.value = null
+})
 
 const toggleCategory = (id) => {
   if (form.categories.includes(id)) {
@@ -183,10 +203,58 @@ const insertMediaUrl = (url, type) => {
   const safeUrl = url.trim()
   if (!safeUrl) return
   const isVideo = type === 'video'
-  const html = isVideo
-    ? `<figure class="media"><video controls src="${safeUrl}" style="max-width:100%;height:auto;"></video></figure>`
-    : `<figure class="image"><img src="${safeUrl}" alt="" style="max-width:100%;height:auto;" /></figure>`
-  form.body = `${form.body ?? ''}\n${html}\n`
+
+  if (editorRef.value) {
+    const editor = editorRef.value
+
+    // Ảnh: dùng lệnh insertImage có sẵn trong CKEditor (chèn tại con trỏ)
+    if (!isVideo && editor.commands.get('insertImage')) {
+      try {
+        editor.execute('insertImage', { source: safeUrl })
+        return
+      } catch (e) {
+        console.warn('insertImage command failed:', e)
+      }
+    }
+
+    // Thử chèn video trực tiếp bằng model fragment (nếu CKEditor cho phép)
+    if (isVideo) {
+      try {
+        const mediaHtml = `<figure class="media"><video controls playsinline style="max-width:100%;height:auto;"><source src="${safeUrl}" type="video/mp4" />Trình duyệt không hỗ trợ video.</video></figure>`
+        const viewFragment = editor.data.processor.toView(mediaHtml)
+        const modelFragment = editor.data.toModel(viewFragment)
+        editor.model.change((writer) => {
+          editor.model.insertContent(modelFragment, editor.model.document.selection)
+        })
+        // Nếu nội dung có chứa URL sau khi chèn, coi như thành công
+        const afterData = editor.getData() ?? ''
+        if (afterData.includes(safeUrl)) {
+          return
+        }
+      } catch (err) {
+        console.warn('Insert video via model failed:', err)
+      }
+    }
+  }
+
+  // Fallback: lưu vào danh sách media để merge khi submit (và hiển thị preview riêng)
+  const mediaItem = {
+    id: Date.now(),
+    url: safeUrl,
+    type: isVideo ? 'video' : 'image',
+  }
+  insertedMedia.value = [...insertedMedia.value, mediaItem]
+}
+
+const removeInsertedMedia = (id) => {
+  insertedMedia.value = insertedMedia.value.filter((item) => item.id !== id)
+}
+
+const buildMediaHtml = (item) => {
+  if (item.type === 'video') {
+    return `<figure class="media-embed"><video controls playsinline style="max-width:100%;height:auto;display:block;margin:1rem auto;"><source src="${item.url}" type="video/mp4" />Trình duyệt không hỗ trợ video.</video></figure>`
+  }
+  return `<figure class="image"><img src="${item.url}" alt="" style="max-width:100%;height:auto;display:block;margin:1rem auto;" /></figure>`
 }
 
 const handleContentFileChange = async (type, event) => {
@@ -195,7 +263,8 @@ const handleContentFileChange = async (type, event) => {
   if (!file) return
   try {
     const uploaded = await mediaStore.uploadMedia({ file, resourceType: type })
-    insertMediaUrl(uploaded?.url ?? '', type)
+    const mediaUrlValue = uploaded?.url ?? uploaded?.secure_url ?? uploaded?.file_url ?? uploaded?.path ?? ''
+    insertMediaUrl(mediaUrlValue, type)
   } catch (error) {
     alert(error?.message ?? 'Không thể tải tệp.')
   }
@@ -219,10 +288,17 @@ const handleSubmit = async () => {
 
   isSubmitting.value = true
   try {
+    // Merge inserted media vào cuối content
+    let finalContent = form.body
+    if (insertedMedia.value.length > 0) {
+      const mediaHtmls = insertedMedia.value.map(buildMediaHtml).join('\n')
+      finalContent = `${finalContent}\n${mediaHtmls}`
+    }
+
     const payload = {
       title: form.title,
       slug: form.slug || null,
-      content: form.body,
+      content: finalContent,
       excerpt: form.excerpt || null,
       status: form.status,
       thumbnail_url: form.thumbnail || null,
@@ -409,7 +485,27 @@ const handleSubmit = async () => {
             </div>
           </div>
           <div class="rich-editor">
-            <ckeditor v-model="form.body" :editor="Editor" :config="editorConfig" />
+            <ckeditor v-model="form.body" :editor="Editor" :config="editorConfig" @ready="handleEditorReady" />
+          </div>
+          
+          <!-- Preview media đã chèn (video sẽ hiển thị ở đây vì CKEditor không hỗ trợ) -->
+          <div v-if="insertedMedia.length > 0" class="inserted-media">
+            <div class="inserted-media__header">
+              <span class="inserted-media__title">Media đã chèn ({{ insertedMedia.length }})</span>
+              <span class="inserted-media__hint">Các media này sẽ được thêm vào cuối bài viết khi lưu</span>
+            </div>
+            <div class="inserted-media__grid">
+              <div v-for="item in insertedMedia" :key="item.id" class="inserted-media__item">
+                <div class="inserted-media__preview">
+                  <video v-if="item.type === 'video'" controls playsinline :src="item.url" class="inserted-media__video"></video>
+                  <img v-else :src="item.url" alt="" class="inserted-media__img" />
+                </div>
+                <div class="inserted-media__actions">
+                  <span class="inserted-media__type">{{ item.type === 'video' ? 'Video' : 'Ảnh' }}</span>
+                  <button type="button" class="inserted-media__remove" @click="removeInsertedMedia(item.id)">Xóa</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -579,6 +675,8 @@ const handleSubmit = async () => {
 
 .rich-editor :deep(.ck-editor__editable) {
   min-height: 320px;
+  max-height: 640px;
+  overflow: auto;
   border: none;
   font-size: 0.95rem;
 }
@@ -660,5 +758,91 @@ const handleSubmit = async () => {
   display: block;
   border-radius: var(--radius-sm);
   object-fit: cover;
+}
+
+/* Inserted media preview */
+.inserted-media {
+  margin-top: 1rem;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(14, 165, 233, 0.04) 100%);
+}
+
+.inserted-media__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.inserted-media__title {
+  font-weight: 600;
+  color: #047857;
+  font-size: 0.9rem;
+}
+
+.inserted-media__hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.inserted-media__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.inserted-media__item {
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #fff;
+}
+
+.inserted-media__preview {
+  aspect-ratio: 16/9;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inserted-media__video,
+.inserted-media__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.inserted-media__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.inserted-media__type {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.inserted-media__remove {
+  background: none;
+  border: none;
+  color: var(--danger-color);
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+.inserted-media__remove:hover {
+  text-decoration: underline;
 }
 </style>

@@ -26,12 +26,13 @@ const mapResourceType = (resourceType) => {
 
 const normalizeMediaItem = (item) => {
   const id = item?.id ?? item?.public_id ?? item?._id ?? `${Date.now()}-${Math.random()}`
+  const primaryUrl = item?.url ?? item?.secure_url ?? item?.file_url ?? item?.path ?? ''
   return {
     id,
     name: item?.name ?? item?.original_filename ?? item?.filename ?? item?.public_id ?? 'Tệp',
     type: item?.type ?? mapResourceType(item?.resource_type),
     size: item?.size ?? (typeof item?.bytes === 'number' ? formatBytes(item.bytes) : '—'),
-    url: item?.url ?? item?.secure_url ?? item?.path ?? '',
+    url: primaryUrl,
     width: item?.width,
     height: item?.height,
     format: item?.format,
