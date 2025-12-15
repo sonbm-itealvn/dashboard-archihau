@@ -3,6 +3,7 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { createEvent, updateEvent, fetchEventById } from '@/api/eventApi'
+import { useMediaStore } from '@/store/modules/media'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,6 +17,7 @@ const form = reactive({
   endTime: '00:00',
   start_time: '',
   end_time: '',
+  banner: '',
   content: '',
 })
 
@@ -23,6 +25,10 @@ const isLoading = ref(false)
 const formError = ref('')
 const loadError = ref('')
 const isSubmitting = ref(false)
+const bannerInputRef = ref(null)
+const bannerError = ref('')
+const mediaStore = useMediaStore()
+const isUploadingBanner = computed(() => mediaStore.isUploading)
 
 const isEditing = computed(() => Boolean(route.params.id))
 
@@ -65,6 +71,7 @@ const populateForm = (event) => {
   form.name = event.name ?? ''
   form.title = event.title ?? ''
   form.location = event.location ?? ''
+  form.banner = event.banner_url ?? ''
   form.content = event.content ?? ''
   const start = parseIso(event.start_time)
   const end = parseIso(event.end_time)
@@ -92,6 +99,23 @@ const loadEvent = async () => {
 
 onMounted(loadEvent)
 
+const triggerBannerPicker = () => {
+  bannerInputRef.value?.click()
+}
+
+const handleBannerFileChange = async (event) => {
+  const [file] = event.target.files ?? []
+  event.target.value = ''
+  if (!file) return
+  bannerError.value = ''
+  try {
+    const uploaded = await mediaStore.uploadMedia({ file, resourceType: 'image' })
+    form.banner = uploaded?.url ?? ''
+  } catch (error) {
+    bannerError.value = error?.message ?? 'Tải banner thất bại.'
+  }
+}
+
 const handleSubmit = async () => {
   formError.value = ''
   if (!form.name.trim() || !form.title.trim() || !form.content.trim()) {
@@ -110,6 +134,7 @@ const handleSubmit = async () => {
       start_time: form.start_time,
       end_time: form.end_time,
       title: form.title,
+      banner_url: form.banner || null,
       content: form.content,
       location: form.location || null,
     }
@@ -150,6 +175,36 @@ const handleSubmit = async () => {
       <div class="form-field">
         <label for="title">Tiêu đề hiển thị (title)</label>
         <input id="title" v-model="form.title" placeholder="Tiêu đề hiển thị trên giao diện" required />
+      </div>
+
+      <div class="form-field">
+        <label for="banner">Banner sự kiện</label>
+        <div class="banner-input">
+          <input id="banner" v-model="form.banner" placeholder="https://cdn.example.com/banner.jpg" />
+          <div class="banner-actions">
+            <input
+              ref="bannerInputRef"
+              type="file"
+              accept="image/*"
+              style="display: none"
+              @change="handleBannerFileChange"
+            />
+            <BaseButton
+              variant="outline"
+              type="button"
+              size="sm"
+              :disabled="isUploadingBanner"
+              @click="triggerBannerPicker"
+            >
+              {{ isUploadingBanner ? 'Đang tải...' : 'Chọn ảnh từ máy' }}
+            </BaseButton>
+            <button v-if="form.banner" type="button" class="banner-clear" @click="form.banner = ''">Xóa ảnh</button>
+          </div>
+          <p v-if="bannerError" class="form-hint form-hint--error">{{ bannerError }}</p>
+          <div v-if="form.banner" class="banner-preview">
+            <img :src="form.banner" alt="Banner sự kiện" />
+          </div>
+        </div>
       </div>
 
       <div class="form-field">
@@ -212,6 +267,16 @@ const handleSubmit = async () => {
   gap: 1rem;
 }
 
+.form-hint {
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.form-hint--error {
+  color: var(--danger-color);
+}
+
 .form__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -222,6 +287,44 @@ const handleSubmit = async () => {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+}
+
+.banner-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.banner-clear {
+  background: none;
+  border: none;
+  color: var(--danger-color);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+}
+
+.banner-preview {
+  margin-top: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.35rem;
+  background: #fff;
+  max-width: 320px;
+}
+
+.banner-preview img {
+  width: 100%;
+  display: block;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
 }
 
 .form-error {

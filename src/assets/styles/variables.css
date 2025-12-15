@@ -1,4 +1,9 @@
 :root {
+  /* Layout spacing */
+  --content-padding: 2rem;
+  --content-padding-sm: 1.25rem;
+  --content-padding-xs: 1rem;
+
   /* Modern Color Palette */
   --primary-color: #0ea5e9; /* Sky 500 */
   --primary-hover: #0284c7; /* Sky 600 */

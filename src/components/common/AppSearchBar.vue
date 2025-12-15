@@ -57,4 +57,16 @@ const submit = () => {
   display: inline-flex;
   color: var(--text-muted);
 }
+
+@media (max-width: 640px) {
+  .app-search {
+    width: 100%;
+    padding-right: 0.5rem;
+  }
+
+  .app-search button {
+    padding-inline: 0.85rem;
+    white-space: nowrap;
+  }
+}
 </style>

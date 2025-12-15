@@ -13,6 +13,8 @@ onMounted(() => {
 })
 
 const keyword = ref('')
+const actionError = ref('')
+const deletingId = ref(null)
 
 const filteredCategories = computed(() => {
   const query = keyword.value.trim().toLowerCase()
@@ -42,6 +44,7 @@ const openEdit = (category) => {
 }
 
 const displayName = (category) => category.display_name ?? category.name ?? 'Danh mục'
+const hasChildren = (category) => Array.isArray(category?.children) && category.children.length > 0
 const initials = (category) => {
   const name = displayName(category)
   return name
@@ -50,6 +53,27 @@ const initials = (category) => {
     .join('')
     .slice(0, 2)
     .toUpperCase()
+}
+
+const handleDelete = async (category) => {
+  actionError.value = ''
+
+  if (hasChildren(category)) {
+    actionError.value = `Không thể xoá danh mục "${displayName(category)}" vì đang có danh mục con.`
+    return
+  }
+
+  const confirmed = typeof window === 'undefined' ? true : window.confirm(`Bạn có chắc muốn xoá "${displayName(category)}"?`)
+  if (!confirmed) return
+
+  deletingId.value = category.id
+  try {
+    await store.deleteCategory(category.id)
+  } catch (error) {
+    actionError.value = error?.message ?? 'Không thể xoá danh mục. Vui lòng thử lại.'
+  } finally {
+    deletingId.value = null
+  }
 }
 </script>
 
@@ -68,6 +92,8 @@ const initials = (category) => {
         <BaseButton @click="router.push({ name: 'category-form' })">Thêm danh mục</BaseButton>
       </div>
     </header>
+
+    <p v-if="actionError" class="alert alert--error">{{ actionError }}</p>
 
     <div class="board">
       <div class="board__head">
@@ -99,6 +125,14 @@ const initials = (category) => {
             <div class="row-actions">
               <BaseButton size="sm" variant="ghost" @click="openDetail(category)">Xem</BaseButton>
               <BaseButton size="sm" variant="outline" @click="openEdit(category)">Chỉnh sửa</BaseButton>
+              <BaseButton
+                size="sm"
+                variant="danger"
+                :disabled="deletingId === category.id"
+                @click="handleDelete(category)"
+              >
+                {{ deletingId === category.id ? 'Đang xoá...' : 'Xoá' }}
+              </BaseButton>
             </div>
           </div>
         </div>

@@ -124,7 +124,7 @@ onMounted(() => {
   <section class="card media">
     <header class="media__header">
       <div>
-        <p class="eyebrow">Thư viện</p>
+        <p class="eyebrow">Kho Media</p>
         <h2>Kho Media</h2>
         <p>Tải lên và quản lý hình ảnh, video, tài liệu một cách đồng bộ.</p>
       </div>

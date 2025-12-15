@@ -14,9 +14,11 @@ import CategoryDetailView from '@/views/categories/CategoryDetailView.vue'
 import TagManagementView from '@/views/tags/TagManagementView.vue'
 import MediaLibraryView from '@/views/media/MediaLibraryView.vue'
 import MediaDetailView from '@/views/media/MediaDetailView.vue'
+import LibraryArticlesView from '@/views/library/LibraryArticlesView.vue'
 import EventListView from '@/views/events/EventListView.vue'
 import EventFormView from '@/views/events/EventFormView.vue'
 import EventDetailView from '@/views/events/EventDetailView.vue'
+import BannerManagementView from '@/views/banners/BannerManagementView.vue'
 import tokenService from '@/services/tokenService'
 import { useAuthStore } from '@/store/modules/auth'
 
@@ -43,8 +45,10 @@ const router = createRouter({
         { path: 'categories/:id', name: 'category-detail', component: CategoryDetailView },
         { path: 'categories/:id/edit', name: 'category-edit', component: CategoryFormView },
         { path: 'tags', name: 'tag-list', component: TagManagementView },
+        { path: 'banners', name: 'banner-list', component: BannerManagementView },
         { path: 'media', name: 'media-library', component: MediaLibraryView },
         { path: 'media/:id', name: 'media-detail', component: MediaDetailView },
+        { path: 'library-articles', name: 'library-articles', component: LibraryArticlesView },
         { path: 'events', name: 'event-list', component: EventListView },
         { path: 'events/new', name: 'event-form', component: EventFormView },
         { path: 'events/:id', name: 'event-detail', component: EventDetailView },

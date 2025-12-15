@@ -1,6 +1,14 @@
 <script setup>
 import { RouterLink } from 'vue-router'
 
+const props = defineProps({
+  isOpen: { type: Boolean, default: false },
+})
+
+const emit = defineEmits(['close'])
+
+const handleNavigate = () => emit('close')
+
 const links = [
   {
     label: 'Tổng quan',
@@ -11,6 +19,11 @@ const links = [
     label: 'Sự kiện',
     to: { name: 'event-list' },
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
+  },
+  {
+    label: 'Banner',
+    to: { name: 'banner-list' },
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18"/><path d="M3 14h18"/><path d="M9 4v14"/></svg>'
   },
   {
     label: 'Người dùng',
@@ -33,15 +46,20 @@ const links = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10V3h-7"></path><path d="M3 21v-7l12-12 7 7-12 12z"></path><path d="M18 8l-3-3"></path></svg>'
   },
   {
-    label: 'Thư viện',
+    label: 'Kho Media',
     to: { name: 'media-library' },
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>'
+  },
+  {
+    label: 'Thư viện bài viết',
+    to: { name: 'library-articles' },
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>'
   },
 ]
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside :class="['sidebar', { 'is-open': props.isOpen }]">
     <div class="sidebar__header">
       <div class="logo">
         <div class="logo-icon">
@@ -64,6 +82,7 @@ const links = [
           class="sidebar__link"
           active-class="is-active"
           :to="link.to"
+          @click="handleNavigate"
         >
           <span class="link-icon" v-html="link.icon"></span>
           <span class="link-text">{{ link.label }}</span>
@@ -89,7 +108,7 @@ const links = [
 
 <style scoped>
 .sidebar {
-  width: var(--sidebar-width);
+  width: min(var(--sidebar-width), 88vw);
   height: 100vh;
   background: var(--sidebar-bg);
   color: var(--sidebar-text);
@@ -283,6 +302,8 @@ const links = [
   .sidebar {
     transform: translateX(-100%);
     transition: transform var(--transition-normal);
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.4);
+    width: min(320px, 88vw);
   }
 
   .sidebar.is-open {

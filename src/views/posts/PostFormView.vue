@@ -6,15 +6,19 @@ import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
 import { createPost, updatePost, fetchPostById } from '@/api/postApi'
 import { useCategoryStore } from '@/store/modules/category'
 import { useTagStore } from '@/store/modules/tag'
+import { useMediaStore } from '@/store/modules/media'
 
 const route = useRoute()
 const router = useRouter()
 const categoryStore = useCategoryStore()
 const tagStore = useTagStore()
+const mediaStore = useMediaStore()
 const formError = ref('')
 const loadError = ref('')
 const isSubmitting = ref(false)
 const isLoading = ref(false)
+const thumbnailInputRef = ref(null)
+const thumbnailError = ref('')
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Bản nháp' },
@@ -35,6 +39,8 @@ const form = reactive({
 })
 
 const isEditing = computed(() => Boolean(route.params.id))
+const thumbnailPreview = computed(() => form.thumbnail?.trim() || '')
+const isUploadingThumbnail = computed(() => mediaStore.isUploading)
 
 const goBack = () => {
   router.push({ name: 'post-list' })
@@ -142,6 +148,23 @@ const toggleTag = (tagId) => {
   }
 }
 
+const triggerThumbnailPicker = () => {
+  thumbnailInputRef.value?.click()
+}
+
+const handleThumbnailFileChange = async (event) => {
+  const [file] = event.target.files ?? []
+  event.target.value = ''
+  if (!file) return
+  thumbnailError.value = ''
+  try {
+    const uploaded = await mediaStore.uploadMedia({ file, resourceType: 'image' })
+    form.thumbnail = uploaded?.url ?? ''
+  } catch (error) {
+    thumbnailError.value = error?.message ?? 'Tải ảnh đại diện thất bại.'
+  }
+}
+
 const handleSubmit = async () => {
   formError.value = ''
   if (!form.title.trim()) {
@@ -225,7 +248,34 @@ const handleSubmit = async () => {
           </div>
           <div class="form-field">
             <label for="thumbnail">Ảnh đại diện</label>
-            <input id="thumbnail" v-model="form.thumbnail" placeholder="https://cdn.example.com/photo.jpg" />
+            <div class="thumbnail-input">
+              <input id="thumbnail" v-model="form.thumbnail" placeholder="https://cdn.example.com/photo.jpg" />
+              <div class="thumbnail-actions">
+                <input
+                  ref="thumbnailInputRef"
+                  type="file"
+                  accept="image/*"
+                  style="display: none"
+                  @change="handleThumbnailFileChange"
+                />
+                <BaseButton
+                  variant="outline"
+                  type="button"
+                  size="sm"
+                  :disabled="isUploadingThumbnail"
+                  @click="triggerThumbnailPicker"
+                >
+                  {{ isUploadingThumbnail ? 'Đang tải...' : 'Chọn ảnh từ máy' }}
+                </BaseButton>
+                <button v-if="form.thumbnail" type="button" class="thumbnail-clear" @click="form.thumbnail = ''">
+                  Xóa ảnh
+                </button>
+              </div>
+              <p v-if="thumbnailError" class="form-hint form-hint--error">{{ thumbnailError }}</p>
+              <div v-if="thumbnailPreview" class="thumbnail-preview">
+                <img :src="thumbnailPreview" alt="Ảnh đại diện bài viết" />
+              </div>
+            </div>
           </div>
           <div class="form-field">
             <label>Danh mục bài viết</label>
@@ -324,6 +374,16 @@ const handleSubmit = async () => {
   text-align: right;
 }
 
+.form-hint {
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.form-hint--error {
+  color: var(--danger-color);
+}
+
 .form__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -403,5 +463,43 @@ const handleSubmit = async () => {
   color: var(--primary-color);
   font-weight: 600;
   box-shadow: 0 6px 16px rgba(14, 165, 233, 0.2);
+}
+
+.thumbnail-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.thumbnail-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.thumbnail-clear {
+  background: none;
+  border: none;
+  color: var(--danger-color);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+}
+
+.thumbnail-preview {
+  margin-top: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.35rem;
+  background: #fff;
+  max-width: 280px;
+}
+
+.thumbnail-preview img {
+  width: 100%;
+  display: block;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
 }
 </style>

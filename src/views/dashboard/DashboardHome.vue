@@ -455,4 +455,36 @@ const revenueTrendPoints = '0,90 35,72 70,78 105,52 140,62 175,38 210,45 245,30'
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .dashboard-home {
+    gap: 1.5rem;
+  }
+
+  .hero-card {
+    grid-template-columns: 1fr;
+    padding: 1.25rem;
+  }
+
+  .hero-actions {
+    width: 100%;
+  }
+
+  .stat-grid {
+    gap: 1rem;
+  }
+
+  .grid-layout {
+    gap: 1rem;
+  }
+
+  .activity__item {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .activity__time {
+    font-weight: 600;
+  }
+}
 </style>

@@ -52,4 +52,23 @@ const goTo = (value) => {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+@media (max-width: 640px) {
+  .app-pagination {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .app-pagination span {
+    width: 100%;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+
+  .app-pagination button {
+    flex: 1;
+    min-width: 120px;
+  }
+}
 </style>

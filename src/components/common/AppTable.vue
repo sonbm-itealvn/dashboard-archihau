@@ -19,7 +19,12 @@ const props = defineProps({
       </thead>
       <tbody>
         <tr v-for="row in rows" :key="row[rowKey] ?? row.id">
-          <td v-for="column in columns" :key="column.key" :class="column.class">
+          <td
+            v-for="column in columns"
+            :key="column.key"
+            :class="column.class"
+            :data-label="column.label"
+          >
             <slot :name="`cell-${column.key}`" :row="row" :value="row[column.key]">
               {{ row[column.key] ?? '-' }}
             </slot>
@@ -90,5 +95,37 @@ const props = defineProps({
   padding: 3rem 1rem;
   text-align: center;
   color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .app-table thead {
+    display: none;
+  }
+
+  .app-table tbody tr {
+    display: block;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.75rem 0;
+  }
+
+  .app-table td {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+  }
+
+  .app-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+  }
+
+  .app-table-container {
+    border-radius: var(--radius-md);
+  }
 }
 </style>

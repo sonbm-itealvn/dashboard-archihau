@@ -3,6 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { useAuth } from '@/composables/useAuth'
 
+const emit = defineEmits(['toggle-sidebar'])
+
 const ROLE_LABELS = {
   manager: 'Quản lý',
   editor: 'Biên tập viên',
@@ -76,7 +78,7 @@ onBeforeUnmount(() => {
 <template>
   <header class="navbar">
     <div class="navbar__left">
-      <button class="menu-toggle" aria-label="Mở hoặc đóng menu">
+      <button class="menu-toggle" aria-label="Mở hoặc đóng menu" @click="emit('toggle-sidebar')">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
       </button>
       <div class="search-bar">
@@ -404,6 +406,44 @@ onBeforeUnmount(() => {
 @media (max-width: 1024px) {
   .menu-toggle {
     display: block;
+  }
+
+  .navbar {
+    gap: 1rem;
+  }
+
+  .search-bar {
+    max-width: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 1rem;
+  }
+
+  .navbar__left {
+    gap: 0.75rem;
+  }
+
+  .search-bar {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .navbar__right {
+    gap: 0.25rem;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .user-chip {
+    padding: 0.35rem 0.65rem;
+    gap: 0.5rem;
   }
 }
 </style>
