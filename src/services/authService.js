@@ -3,8 +3,10 @@ import tokenService from './tokenService'
 
 export async function login(credentials) {
   const response = await authApi.login(credentials)
-  if (response?.token) {
-    tokenService.setToken(response.token)
+  // API now returns access_token; fall back to token for backward compatibility.
+  const accessToken = response?.access_token ?? response?.token
+  if (accessToken) {
+    tokenService.setToken(accessToken)
   }
   return response
 }
