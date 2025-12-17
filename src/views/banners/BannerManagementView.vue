@@ -105,11 +105,15 @@ const handleBannerFileChange = async (event) => {
   event.target.value = ''
   if (!file) return
   bannerError.value = ''
+  
+  // Detect file type: image or video
+  const fileType = file.type.startsWith('video/') ? 'video' : 'image'
+  
   try {
-    const uploaded = await mediaStore.uploadMedia({ file, resourceType: 'image' })
-    form.image_url = uploaded?.url ?? ''
+    const uploaded = await mediaStore.uploadMedia({ file, resourceType: fileType })
+    form.image_url = uploaded?.url ?? uploaded?.secure_url ?? uploaded?.file_url ?? uploaded?.path ?? ''
   } catch (error) {
-    bannerError.value = error?.message ?? 'Tải ảnh thất bại.'
+    bannerError.value = error?.message ?? 'Tải banner thất bại.'
   }
 }
 
@@ -144,7 +148,7 @@ const handleSubmit = async () => {
   }
 
   if (!imageUrl) {
-    formError.value = 'Vui lòng nhập URL hình ảnh banner.'
+    formError.value = 'Vui lòng nhập URL banner hoặc chọn ảnh/video từ thiết bị.'
     return
   }
 
@@ -214,6 +218,13 @@ const formatDateTime = (value) => {
     minute: '2-digit',
   })
 }
+
+const isImageUrl = (url) => {
+  if (!url) return false
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp']
+  const lowerUrl = url.toLowerCase()
+  return imageExtensions.some((ext) => lowerUrl.includes(ext)) || lowerUrl.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|$)/i)
+}
 </script>
 
 <template>
@@ -275,40 +286,45 @@ const formatDateTime = (value) => {
 
         <div v-if="store.isLoading" class="panel__state">Đang tải danh sách banner...</div>
         <div v-else-if="!filteredBanners.length" class="panel__state">Chưa có banner nào phù hợp.</div>
-        <div v-else class="banner-table">
-          <div class="banner-table__header">
-            <span>Banner</span>
-            <span>Thứ tự</span>
-            <span>Trạng thái</span>
-            <span class="text-right">Thao tác</span>
-          </div>
-
-          <div v-for="banner in filteredBanners" :key="banner.id" class="banner-row">
-            <div class="cell cell--main">
-              <div class="thumb" :style="{ backgroundImage: `url(${banner.image_url})` }" role="presentation" />
-              <div class="info">
-                <p class="title">{{ banner.title }}</p>
-                <p class="description">{{ banner.description || 'Chưa có mô tả.' }}</p>
-                <div class="meta">
-                  <span v-if="banner.link_url" class="pill pill--outline">
-                    Link: {{ banner.link_url }}
+        <div v-else class="banner-list">
+          <div v-for="banner in filteredBanners" :key="banner.id" class="banner-card">
+            <div class="banner-card__preview">
+              <div class="banner-thumb" :style="{ backgroundImage: `url(${banner.image_url})` }" role="presentation" />
+            </div>
+            
+            <div class="banner-card__content">
+              <div class="banner-header">
+                <h4 class="banner-title">{{ banner.title }}</h4>
+                <div class="banner-badges">
+                  <span class="badge badge--order">#{{ banner.display_order ?? '—' }}</span>
+                  <span class="badge" :class="banner.is_active ? 'badge--success' : 'badge--muted'">
+                    {{ banner.is_active ? 'Đang hiển thị' : 'Đang tắt' }}
                   </span>
-                  <span class="pill">Tạo lúc {{ formatDateTime(banner.created_at) }}</span>
                 </div>
+              </div>
+              
+              <p class="banner-description">{{ banner.description || 'Chưa có mô tả.' }}</p>
+              
+              <div class="banner-meta">
+                <span v-if="banner.link_url" class="meta-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                  <span class="meta-text">{{ banner.link_url }}</span>
+                </span>
+                <span class="meta-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  <span class="meta-text">Tạo lúc {{ formatDateTime(banner.created_at) }}</span>
+                </span>
               </div>
             </div>
 
-            <div class="cell">
-              <p class="order">#{{ banner.display_order ?? '—' }}</p>
-            </div>
-
-            <div class="cell">
-              <span class="status" :class="banner.is_active ? 'status--active' : 'status--inactive'">
-                {{ banner.is_active ? 'Đang hiển thị' : 'Đang tắt' }}
-              </span>
-            </div>
-
-            <div class="cell text-right actions">
+            <div class="banner-card__actions">
               <BaseButton
                 size="sm"
                 variant="outline"
@@ -350,13 +366,13 @@ const formatDateTime = (value) => {
           </div>
 
           <div class="form-field">
-            <label for="banner-image">Ảnh banner (URL) *</label>
-            <input id="banner-image" v-model="form.image_url" placeholder="https://cdn.example.com/banner.jpg" />
+            <label for="banner-image">Banner (URL) *</label>
+            <input id="banner-image" v-model="form.image_url" placeholder="https://cdn.example.com/banner.jpg hoặc video.mp4" />
             <div class="banner-actions">
               <input
                 ref="bannerInputRef"
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 style="display: none"
                 @change="handleBannerFileChange"
               />
@@ -367,14 +383,17 @@ const formatDateTime = (value) => {
                 :disabled="isUploadingBanner"
                 @click="triggerBannerPicker"
               >
-                {{ isUploadingBanner ? 'Đang tải...' : 'Chọn ảnh từ máy' }}
+                {{ isUploadingBanner ? 'Đang tải...' : 'Chọn banner' }}
               </BaseButton>
-              <button v-if="form.image_url" type="button" class="banner-clear" @click="form.image_url = ''">Xóa ảnh</button>
+              <button v-if="form.image_url" type="button" class="banner-clear" @click="form.image_url = ''">Xóa banner</button>
             </div>
-            <p class="form-hint">Nhập URL sẵn có hoặc chọn ảnh từ máy (Cloudinary sẽ tự tải nếu cấu hình).</p>
+            <p class="form-hint">Nhập URL sẵn có hoặc chọn ảnh/video từ thiết bị (Cloudinary sẽ tự tải nếu cấu hình).</p>
             <p v-if="bannerError" class="form-hint form-hint--error">{{ bannerError }}</p>
             <div v-if="form.image_url" class="preview">
-              <img :src="form.image_url" alt="Xem trước banner" />
+              <img v-if="isImageUrl(form.image_url)" :src="form.image_url" alt="Xem trước banner" />
+              <video v-else controls :src="form.image_url" style="width: 100%; max-height: 300px; border-radius: var(--radius-sm);">
+                Trình duyệt không hỗ trợ video.
+              </video>
             </div>
           </div>
 
@@ -540,123 +559,159 @@ const formatDateTime = (value) => {
   color: var(--text-secondary);
 }
 
-.banner-table {
+.banner-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
-.banner-table__header,
-.banner-row {
+.banner-card {
   display: grid;
-  grid-template-columns: 2fr 120px 140px 220px;
-  gap: 0.75rem;
-  align-items: center;
+  grid-template-columns: 140px 1fr auto;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(219, 234, 254, 0.6);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
-.banner-table__header {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #3b4a5a;
+.banner-card:hover {
+  border-color: rgba(14, 165, 233, 0.4);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
 }
 
-.banner-row {
-  padding: 0.85rem 0.5rem;
-  border: 1px solid rgba(219, 234, 254, 0.8);
-  border-radius: var(--radius-md);
+.banner-card__preview {
+  flex-shrink: 0;
 }
 
-.cell {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.cell--main {
-  gap: 0.75rem;
-}
-
-.thumb {
-  width: 86px;
-  height: 56px;
+.banner-thumb {
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
   border-radius: var(--radius-md);
   background-size: cover;
   background-position: center;
-  background-color: #e5e7eb;
+  background-color: #f1f5f9;
   border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.info {
+.banner-card__content {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
 }
 
-.title {
+.banner-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.banner-title {
   margin: 0;
+  font-size: 1.125rem;
   font-weight: 700;
   color: #0f172a;
+  line-height: 1.4;
+  flex: 1;
+  min-width: 200px;
 }
 
-.description {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-.meta {
+.banner-badges {
   display: flex;
+  align-items: center;
+  gap: 0.5rem;
   flex-wrap: wrap;
-  gap: 0.35rem;
 }
 
-.pill {
+.badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.65rem;
+  padding: 0.35rem 0.75rem;
   border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge--order {
   background: rgba(14, 165, 233, 0.12);
-  color: #0f6ddf;
-  font-size: 0.82rem;
-  font-weight: 600;
+  color: var(--primary-hover);
+  border: 1px solid rgba(14, 165, 233, 0.2);
 }
 
-.pill--outline {
-  background: rgba(15, 23, 42, 0.04);
-  color: #1f2937;
-}
-
-.order {
-  margin: 0;
-  font-weight: 700;
-}
-
-.status {
-  padding: 0.25rem 0.65rem;
-  border-radius: var(--radius-full);
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-.status--active {
+.badge--success {
   background: rgba(16, 185, 129, 0.15);
   color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
-.status--inactive {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
+.badge--muted {
+  background: rgba(148, 163, 184, 0.12);
+  color: #64748b;
+  border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
-.actions {
-  gap: 0.35rem;
-  justify-content: flex-end;
+.banner-description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.text-right {
-  justify-content: flex-end;
+.banner-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.meta-item svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.meta-text {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banner-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  min-width: 140px;
+}
+
+.banner-card__actions .btn {
+  width: 100%;
+  justify-content: center;
 }
 
 .panel--form {
@@ -760,14 +815,57 @@ const formatDateTime = (value) => {
     position: static;
   }
 
-  .banner-table__header,
-  .banner-row {
-    grid-template-columns: 1fr;
+  .banner-card {
+    grid-template-columns: 120px 1fr;
+    gap: 1rem;
   }
 
-  .text-right,
-  .actions {
+  .banner-card__actions {
+    grid-column: 1 / -1;
+    flex-direction: row;
     justify-content: flex-start;
+    width: 100%;
+    min-width: auto;
+  }
+
+  .banner-card__actions .btn {
+    width: auto;
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 768px) {
+  .banner-card {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .banner-card__preview {
+    width: 100%;
+  }
+
+  .banner-thumb {
+    width: 100%;
+    min-height: 180px;
+  }
+
+  .banner-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .banner-title {
+    min-width: auto;
+  }
+
+  .banner-card__actions {
+    grid-column: 1;
+    flex-wrap: wrap;
+  }
+
+  .banner-card__actions .btn {
+    flex: 1;
+    min-width: 100px;
   }
 }
 

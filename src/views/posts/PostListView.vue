@@ -1,21 +1,39 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import AppSearchBar from '@/components/common/AppSearchBar.vue'
 import { usePostStore } from '@/store/modules/post'
 import { useCategoryStore } from '@/store/modules/category'
+import { useCategoryGroupStore } from '@/store/modules/categoryGroup'
 
 const router = useRouter()
 const store = usePostStore()
 const categoryStore = useCategoryStore()
+const categoryGroupStore = useCategoryGroupStore()
 const { posts, error: loadError, isLoading } = storeToRefs(store)
 const { categories } = storeToRefs(categoryStore)
 
+const closeDropdownOnOutsideClick = (event) => {
+  const target = event.target
+  const wrapper = document.querySelector('.filter-dropdown-wrapper')
+  if (wrapper && !wrapper.contains(target)) {
+    showCategoryDropdown.value = false
+  }
+}
+
 onMounted(() => {
-  categoryStore.fetchCategories()
-  store.fetchPosts()
+  Promise.all([
+    categoryStore.fetchCategories(),
+    categoryGroupStore.fetchCategoryGroups(),
+    store.fetchPosts(),
+  ])
+  document.addEventListener('click', closeDropdownOnOutsideClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeDropdownOnOutsideClick)
 })
 
 const keyword = ref('')
@@ -23,6 +41,7 @@ const selectedCategoryIds = ref([])
 const isFiltering = ref(false)
 const selectedCount = computed(() => selectedCategoryIds.value.length)
 const deletingId = ref(null)
+const showCategoryDropdown = ref(false)
 
 const STATUS_TEXTS = {
   draft: 'Bản nháp',
@@ -72,6 +91,37 @@ const toggleCategory = (id) => {
     selectedCategoryIds.value = [...selectedCategoryIds.value, id]
   }
 }
+
+// Nhóm categories theo category groups
+const categoriesByGroup = computed(() => {
+  const groups = categoryGroupStore.categoryGroups || []
+  const allCategories = categories.value || []
+  const result = []
+
+  // Thêm categories theo từng nhóm
+  groups.forEach((group) => {
+    const groupCategories = allCategories.filter((cat) => cat.category_group_id === group.id)
+    if (groupCategories.length > 0) {
+      result.push({
+        groupId: group.id,
+        groupName: group.name,
+        categories: groupCategories,
+      })
+    }
+  })
+
+  // Thêm categories không thuộc nhóm nào (category_group_id = null)
+  const ungroupedCategories = allCategories.filter((cat) => !cat.category_group_id)
+  if (ungroupedCategories.length > 0) {
+    result.push({
+      groupId: null,
+      groupName: 'Danh mục khác',
+      categories: ungroupedCategories,
+    })
+  }
+
+  return result
+})
 
 const handleCreate = () => {
   router.push({ name: 'post-form' })
@@ -205,24 +255,51 @@ function formatVietnamTime(value) {
     </header>
 
     <div class="filters-bar">
-      <div class="filter-group">
-        <div class="filter-label">
+      <div class="filter-dropdown-wrapper">
+        <button
+          type="button"
+          class="filter-dropdown-trigger"
+          :class="{ 'has-selection': selectedCount > 0 }"
+          @click="showCategoryDropdown = !showCategoryDropdown"
+        >
           <span>Lọc theo danh mục</span>
-          <span v-if="selectedCount" class="filter-count">{{ selectedCount }} đã chọn</span>
-        </div>
-        <div class="filter-chips">
-          <button
-            v-for="category in categories"
-            :key="category.id"
-            type="button"
-            class="filter-chip"
-            :class="{ 'is-active': selectedCategoryIds.includes(category.id) }"
-            @click="toggleCategory(category.id)"
+          <span v-if="selectedCount" class="filter-count-badge">{{ selectedCount }}</span>
+          <svg
+            class="dropdown-icon"
+            :class="{ 'is-open': showCategoryDropdown }"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
           >
-            <span class="dot" aria-hidden="true"></span>
-            <span>{{ category.display_name ?? category.name }}</span>
-          </button>
-          <span v-if="!categories.length" class="muted-text">Chưa có danh mục.</span>
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div v-if="showCategoryDropdown" class="filter-dropdown" @click.stop>
+          <div v-if="!categoriesByGroup.length" class="dropdown-empty">Chưa có danh mục.</div>
+          <div v-else class="filter-groups">
+            <div v-for="group in categoriesByGroup" :key="group.groupId ?? 'ungrouped'" class="filter-group-item">
+              <div class="filter-group-header">
+                <h4 class="filter-group-title">{{ group.groupName }}</h4>
+                <span class="filter-group-count">({{ group.categories.length }})</span>
+              </div>
+              <div class="filter-chips">
+                <button
+                  v-for="category in group.categories"
+                  :key="category.id"
+                  type="button"
+                  class="filter-chip"
+                  :class="{ 'is-active': selectedCategoryIds.includes(category.id) }"
+                  @click="toggleCategory(category.id)"
+                >
+                  <span class="dot" aria-hidden="true"></span>
+                  <span>{{ category.display_name ?? category.name }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="filter-actions">
@@ -358,30 +435,131 @@ function formatVietnamTime(value) {
 
 .filters-bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0.75rem 1rem;
-  background: #fff;
+  gap: 0.75rem;
 }
 
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  flex: 1;
-  min-width: 260px;
+.filter-dropdown-wrapper {
+  position: relative;
 }
 
-.filter-label {
+.filter-dropdown-trigger {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-dropdown-trigger:hover {
+  border-color: var(--primary-color);
+  background: rgba(14, 165, 233, 0.05);
+}
+
+.filter-dropdown-trigger.has-selection {
+  border-color: var(--primary-color);
+  background: rgba(14, 165, 233, 0.1);
+  color: var(--primary-hover);
+}
+
+.filter-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 0.4rem;
+  border-radius: var(--radius-full);
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 0.75rem;
   font-weight: 700;
-  color: #0f172a;
+}
+
+.dropdown-icon {
+  transition: transform var(--transition-fast);
+  color: var(--text-muted);
+}
+
+.dropdown-icon.is-open {
+  transform: rotate(180deg);
+}
+
+.filter-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 100;
+  min-width: 500px;
+  max-width: 600px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+}
+
+.filter-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-dropdown::-webkit-scrollbar-track {
+  background: rgba(14, 165, 233, 0.05);
+  border-radius: var(--radius-full);
+}
+
+.filter-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(14, 165, 233, 0.3);
+  border-radius: var(--radius-full);
+}
+
+.filter-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 165, 233, 0.5);
+}
+
+.filter-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.filter-group-item {
+  padding: 0.75rem;
+  border: 1px solid rgba(14, 165, 233, 0.15);
+  border-radius: var(--radius-md);
+  background: rgba(248, 250, 252, 0.5);
+}
+
+.filter-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(14, 165, 233, 0.1);
+}
+
+.filter-group-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.filter-group-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .filter-chips {
@@ -426,19 +604,14 @@ function formatVietnamTime(value) {
   display: flex;
   gap: 0.5rem;
   align-items: center;
-  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
-.filter-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.15rem 0.55rem;
-  border-radius: var(--radius-full);
-  background: rgba(14, 165, 233, 0.12);
-  color: #0f6ddf;
-  font-size: 0.85rem;
-  font-weight: 600;
+.dropdown-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .page__search {
@@ -649,10 +822,26 @@ function formatVietnamTime(value) {
   color: var(--danger-color);
 }
 
+.muted-text {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
 @media (max-width: 640px) {
-  .filters-bar {
-    flex-direction: column;
-    align-items: flex-start;
+  .filter-dropdown {
+    min-width: calc(100vw - 2rem);
+    max-width: calc(100vw - 2rem);
+    left: 0;
+    right: 0;
+  }
+
+  .filter-groups {
+    gap: 0.75rem;
+  }
+
+  .filter-group-item {
+    padding: 0.5rem;
   }
 }
 </style>

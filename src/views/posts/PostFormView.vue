@@ -5,12 +5,14 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
 import { createPost, updatePost, fetchPostById } from '@/api/postApi'
 import { useCategoryStore } from '@/store/modules/category'
+import { useCategoryGroupStore } from '@/store/modules/categoryGroup'
 import { useTagStore } from '@/store/modules/tag'
 import { useMediaStore } from '@/store/modules/media'
 
 const route = useRoute()
 const router = useRouter()
 const categoryStore = useCategoryStore()
+const categoryGroupStore = useCategoryGroupStore()
 const tagStore = useTagStore()
 const mediaStore = useMediaStore()
 const formError = ref('')
@@ -97,7 +99,11 @@ const loadPost = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([categoryStore.fetchCategories(), tagStore.fetchTags()])
+  await Promise.all([
+    categoryStore.fetchCategories(),
+    categoryGroupStore.fetchCategoryGroups(),
+    tagStore.fetchTags(),
+  ])
   if (isEditing.value) {
     await loadPost()
   } else {
@@ -105,12 +111,48 @@ onMounted(async () => {
   }
 })
 
-const categoryOptions = computed(() =>
-  categoryStore.categories.map((category) => ({
-    id: category.id,
-    label: category.display_name || category.name,
-  })),
-)
+// Nhóm categories theo category groups
+const categoriesByGroup = computed(() => {
+  const groups = categoryGroupStore.categoryGroups || []
+  const categories = categoryStore.categories || []
+  const result = []
+
+  // Thêm categories theo từng nhóm
+  groups.forEach((group) => {
+    const groupCategories = categories
+      .filter((cat) => cat.category_group_id === group.id)
+      .map((category) => ({
+        id: category.id,
+        label: category.display_name || category.name,
+      }))
+
+    if (groupCategories.length > 0) {
+      result.push({
+        groupId: group.id,
+        groupName: group.name,
+        categories: groupCategories,
+      })
+    }
+  })
+
+  // Thêm categories không thuộc nhóm nào (category_group_id = null)
+  const ungroupedCategories = categories
+    .filter((cat) => !cat.category_group_id)
+    .map((category) => ({
+      id: category.id,
+      label: category.display_name || category.name,
+    }))
+
+  if (ungroupedCategories.length > 0) {
+    result.push({
+      groupId: null,
+      groupName: 'Danh mục khác',
+      categories: ungroupedCategories,
+    })
+  }
+
+  return result
+})
 
 const tagOptions = computed(() =>
   tagStore.tags.map((tag) => ({
@@ -336,11 +378,12 @@ const handleSubmit = async () => {
     <div v-else-if="loadError" class="form-state form-state--error">{{ loadError }}</div>
 
     <form v-else class="form__body" @submit.prevent="handleSubmit">
-      <div class="form__grid">
-        <div class="form-card">
+      <div class="form__main-grid">
+        <!-- Cột trái: Thông tin chính -->
+        <div class="form-section form-section--main">
           <h3>Thông tin chính</h3>
           <div class="form-field">
-            <label for="title">Tiêu đề</label>
+            <label for="title">Tiêu đề *</label>
             <input id="title" v-model="form.title" placeholder="Nhập tiêu đề bài viết" required />
           </div>
           <div class="form-field">
@@ -351,10 +394,6 @@ const handleSubmit = async () => {
             <label for="excerpt">Mô tả ngắn</label>
             <textarea id="excerpt" v-model="form.excerpt" rows="3" placeholder="Tóm tắt nội dung chính..." />
           </div>
-        </div>
-
-        <div class="form-card">
-          <h3>Thiết lập hiển thị</h3>
           <div class="form-field">
             <label for="status">Trạng thái</label>
             <select id="status" v-model="form.status">
@@ -382,10 +421,10 @@ const handleSubmit = async () => {
                   :disabled="isUploadingThumbnail"
                   @click="triggerThumbnailPicker"
                 >
-                  {{ isUploadingThumbnail ? 'Đang tải...' : 'Chọn ảnh từ máy' }}
+                  {{ isUploadingThumbnail ? 'Đang tải...' : 'Chọn ảnh' }}
                 </BaseButton>
                 <button v-if="form.thumbnail" type="button" class="thumbnail-clear" @click="form.thumbnail = ''">
-                  Xóa ảnh
+                  Xóa
                 </button>
               </div>
               <p v-if="thumbnailError" class="form-hint form-hint--error">{{ thumbnailError }}</p>
@@ -394,20 +433,33 @@ const handleSubmit = async () => {
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Cột phải: Danh mục và thẻ -->
+        <div class="form-section form-section--sidebar">
+          <h3>Phân loại</h3>
           <div class="form-field">
             <label>Danh mục bài viết</label>
-            <div class="pill-group">
-              <button
-                v-for="category in categoryOptions"
-                :key="category.id"
-                type="button"
-                class="pill-option"
-                :class="{ 'is-active': form.categories.includes(category.id) }"
-                @click="toggleCategory(category.id)"
-              >
-                {{ category.label }}
-              </button>
-              <p v-if="!categoryOptions.length" class="hint">Chưa có danh mục nào.</p>
+            <div v-if="!categoriesByGroup.length" class="hint">Chưa có danh mục nào.</div>
+            <div v-else class="category-groups">
+              <div v-for="group in categoriesByGroup" :key="group.groupId ?? 'ungrouped'" class="category-group">
+                <div class="category-group__header">
+                  <h4 class="category-group__title">{{ group.groupName }}</h4>
+                  <span class="category-group__count">({{ group.categories.length }})</span>
+                </div>
+                <div class="pill-group">
+                  <button
+                    v-for="category in group.categories"
+                    :key="category.id"
+                    type="button"
+                    class="pill-option"
+                    :class="{ 'is-active': form.categories.includes(category.id) }"
+                    @click="toggleCategory(category.id)"
+                  >
+                    {{ category.label }}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           <div class="form-field">
@@ -573,13 +625,40 @@ const handleSubmit = async () => {
   color: var(--danger-color);
 }
 
-.form__grid {
+.form__main-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: 1fr 400px;
   gap: 1.5rem;
+  align-items: start;
 }
 
-.form-card {
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-section--main {
+  min-width: 0;
+}
+
+.form-section--sidebar {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+.form-section h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid rgba(14, 165, 233, 0.15);
+}
+
+.form-section--sidebar {
   border: 1px solid rgba(14, 165, 233, 0.15);
   border-radius: var(--radius-lg);
   padding: 1.25rem;
@@ -587,11 +666,46 @@ const handleSubmit = async () => {
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
 }
 
-.form-card h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1rem;
+.form-section--main .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-section--main .form-field label {
+  font-weight: 600;
+  font-size: 0.875rem;
   color: var(--text-secondary);
+}
+
+.form-section--main .form-field input,
+.form-section--main .form-field textarea,
+.form-section--main .form-field select {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9375rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-section--main .form-field input:focus,
+.form-section--main .form-field textarea:focus,
+.form-section--main .form-field select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+@media (max-width: 1200px) {
+  .form__main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-section--sidebar {
+    position: static;
+    max-height: none;
+  }
 }
 
 .rich-editor {
@@ -698,6 +812,41 @@ const handleSubmit = async () => {
   color: var(--danger-color);
 }
 
+.category-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.category-group {
+  padding: 1rem;
+  border: 1px solid rgba(14, 165, 233, 0.15);
+  border-radius: var(--radius-lg);
+  background: rgba(248, 250, 252, 0.5);
+}
+
+.category-group__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(14, 165, 233, 0.1);
+}
+
+.category-group__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.category-group__count {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .pill-group {
   display: flex;
   flex-wrap: wrap;
@@ -720,6 +869,12 @@ const handleSubmit = async () => {
   color: var(--primary-color);
   font-weight: 600;
   box-shadow: 0 6px 16px rgba(14, 165, 233, 0.2);
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin: 0;
 }
 
 .thumbnail-input {

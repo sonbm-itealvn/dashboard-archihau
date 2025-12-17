@@ -50,10 +50,22 @@ export const useEventStore = defineStore('event', () => {
     }
   }
 
+  async function deleteEvent(id) {
+    error.value = ''
+    try {
+      await eventApi.deleteEvent(id)
+      events.value = events.value.filter((event) => event.id !== id)
+    } catch (err) {
+      error.value = err?.message ?? 'Không thể xóa sự kiện.'
+      throw err
+    }
+  }
+
   return {
     events,
     isLoading,
     error,
     fetchEvents,
+    deleteEvent,
   }
 })

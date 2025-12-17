@@ -17,6 +17,8 @@ const FILTERS = [
 
 const keyword = ref('')
 const activeFilter = ref('all')
+const actionError = ref('')
+const deletingId = ref(null)
 
 onMounted(() => {
   store.fetchEvents()
@@ -87,6 +89,21 @@ const formatVietnamTime = (value) => {
   if (Number.isNaN(date.getTime())) return '—'
   return date.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
 }
+
+const handleDelete = async (event) => {
+  actionError.value = ''
+  const confirmed = typeof window === 'undefined' ? true : window.confirm(`Bạn có chắc muốn xóa sự kiện "${event.title}"?`)
+  if (!confirmed) return
+
+  deletingId.value = event.id
+  try {
+    await store.deleteEvent(event.id)
+  } catch (error) {
+    actionError.value = error?.message ?? 'Không thể xóa sự kiện. Vui lòng thử lại.'
+  } finally {
+    deletingId.value = null
+  }
+}
 </script>
 
 <template>
@@ -118,6 +135,8 @@ const formatVietnamTime = (value) => {
       </button>
     </div>
 
+    <p v-if="actionError" class="alert alert--error">{{ actionError }}</p>
+
     <div class="event-grid">
       <article v-for="event in filteredEvents" :key="event.id" class="event-card" :class="`event-card--${event.status}`">
         <div class="event-card__header">
@@ -143,6 +162,14 @@ const formatVietnamTime = (value) => {
         <div class="event-card__actions">
           <button type="button" class="link" @click="openDetail(event)">Chi tiết</button>
           <button type="button" class="link" @click="openEdit(event)">Chỉnh sửa</button>
+          <button
+            type="button"
+            class="link link--danger"
+            :disabled="deletingId === event.id"
+            @click="handleDelete(event)"
+          >
+            {{ deletingId === event.id ? 'Đang xóa...' : 'Xóa' }}
+          </button>
         </div>
       </article>
 
@@ -308,6 +335,31 @@ const formatVietnamTime = (value) => {
 
 .link:hover {
   text-decoration: underline;
+}
+
+.link--danger {
+  color: var(--danger-color);
+}
+
+.link--danger:hover {
+  color: #dc2626;
+}
+
+.link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+}
+
+.alert--error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: var(--danger-color);
 }
 
 .empty-state {

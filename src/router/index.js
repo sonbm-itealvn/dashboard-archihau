@@ -19,6 +19,9 @@ import EventListView from '@/views/events/EventListView.vue'
 import EventFormView from '@/views/events/EventFormView.vue'
 import EventDetailView from '@/views/events/EventDetailView.vue'
 import BannerManagementView from '@/views/banners/BannerManagementView.vue'
+import CategoryGroupListView from '@/views/category-groups/CategoryGroupListView.vue'
+import CategoryGroupFormView from '@/views/category-groups/CategoryGroupFormView.vue'
+import CategoryGroupDetailView from '@/views/category-groups/CategoryGroupDetailView.vue'
 import tokenService from '@/services/tokenService'
 import { useAuthStore } from '@/store/modules/auth'
 
@@ -44,6 +47,10 @@ const router = createRouter({
         { path: 'categories/new', name: 'category-form', component: CategoryFormView },
         { path: 'categories/:id', name: 'category-detail', component: CategoryDetailView },
         { path: 'categories/:id/edit', name: 'category-edit', component: CategoryFormView },
+        { path: 'category-groups', name: 'category-group-list', component: CategoryGroupListView },
+        { path: 'category-groups/new', name: 'category-group-form', component: CategoryGroupFormView },
+        { path: 'category-groups/:id', name: 'category-group-detail', component: CategoryGroupDetailView },
+        { path: 'category-groups/:id/edit', name: 'category-group-edit', component: CategoryGroupFormView },
         { path: 'tags', name: 'tag-list', component: TagManagementView },
         { path: 'banners', name: 'banner-list', component: BannerManagementView },
         { path: 'media', name: 'media-library', component: MediaLibraryView },
