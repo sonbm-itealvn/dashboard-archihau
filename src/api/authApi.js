@@ -35,3 +35,11 @@ export async function logout() {
 export async function fetchProfile() {
   return http(`${AUTH_BASE}/me`)
 }
+
+export async function refreshToken(refreshToken) {
+  return http(`${AUTH_BASE}/refresh`, {
+    method: 'POST',
+    body: { refresh_token: refreshToken },
+    auth: false,
+  })
+}

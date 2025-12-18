@@ -68,11 +68,11 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const token = tokenService.getToken()
+  const hasToken = tokenService.hasToken()
   const isPublic = Boolean(to.meta?.public)
   const authStore = useAuthStore()
 
-  if (token && !authStore.currentUser) {
+  if (hasToken && !authStore.currentUser) {
     try {
       await authStore.fetchProfile()
     } catch {
@@ -82,12 +82,12 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  if (!isPublic && !token) {
+  if (!isPublic && !hasToken) {
     next({ name: 'login', query: { redirect: to.fullPath } })
     return
   }
 
-  if (token && ['login', 'register'].includes(String(to.name))) {
+  if (hasToken && ['login', 'register'].includes(String(to.name))) {
     next({ name: 'dashboard-home' })
     return
   }

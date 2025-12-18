@@ -1,4 +1,5 @@
-const TOKEN_KEY = 'hau_dashboard_token'
+const ACCESS_TOKEN_KEY = 'hau_dashboard_access_token'
+const REFRESH_TOKEN_KEY = 'hau_dashboard_refresh_token'
 
 const storage = typeof window !== 'undefined'
   ? window.localStorage
@@ -10,17 +11,34 @@ const storage = typeof window !== 'undefined'
 
 const tokenService = {
   getToken() {
-    return storage.getItem(TOKEN_KEY)
+    return storage.getItem(ACCESS_TOKEN_KEY)
   },
-  setToken(value) {
-    if (value) {
-      storage.setItem(TOKEN_KEY, value)
+  getRefreshToken() {
+    return storage.getItem(REFRESH_TOKEN_KEY)
+  },
+  setToken(accessToken, refreshToken = null) {
+    if (accessToken) {
+      storage.setItem(ACCESS_TOKEN_KEY, accessToken)
     } else {
-      storage.removeItem(TOKEN_KEY)
+      storage.removeItem(ACCESS_TOKEN_KEY)
+    }
+    if (refreshToken) {
+      storage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+    }
+  },
+  setRefreshToken(refreshToken) {
+    if (refreshToken) {
+      storage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+    } else {
+      storage.removeItem(REFRESH_TOKEN_KEY)
     }
   },
   clear() {
-    storage.removeItem(TOKEN_KEY)
+    storage.removeItem(ACCESS_TOKEN_KEY)
+    storage.removeItem(REFRESH_TOKEN_KEY)
+  },
+  hasToken() {
+    return !!storage.getItem(ACCESS_TOKEN_KEY)
   },
 }
 
