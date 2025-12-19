@@ -23,6 +23,52 @@ const closeDropdownOnOutsideClick = (event) => {
   }
 }
 
+// Tìm category group "Thông báo"
+const announcementGroup = computed(() => {
+  const groups = categoryGroupStore.categoryGroups || []
+  return groups.find(
+    (group) =>
+      group.name?.toLowerCase().includes('thông báo') ||
+      group.name?.toLowerCase().includes('thong bao') ||
+      group.slug?.toLowerCase().includes('thong-bao')
+  )
+})
+
+// Lấy tất cả category IDs thuộc nhóm thông báo
+const announcementCategoryIds = computed(() => {
+  if (!announcementGroup.value) return []
+  const allCategories = categories.value || []
+  return allCategories
+    .filter((cat) => cat.category_group_id === announcementGroup.value.id)
+    .map((cat) => cat.id)
+})
+
+// Filter posts chỉ hiển thị những bài có category thuộc nhóm thông báo
+const announcementPosts = computed(() => {
+  if (!announcementCategoryIds.value.length) return []
+  return posts.value.filter((post) => {
+    const postCategoryIds = extractPostCategoryIds(post)
+    return postCategoryIds.some((id) => announcementCategoryIds.value.includes(id))
+  })
+})
+
+function extractPostCategoryIds(post) {
+  const ids = []
+  if (Array.isArray(post.postCategories)) {
+    post.postCategories.forEach((relation) => {
+      const catId = relation?.category?.id ?? relation?.category_id ?? relation?.id
+      if (catId) ids.push(catId)
+    })
+  }
+  if (Array.isArray(post.categories)) {
+    post.categories.forEach((cat) => {
+      const catId = cat?.id ?? cat
+      if (catId) ids.push(catId)
+    })
+  }
+  return ids
+}
+
 onMounted(() => {
   Promise.all([
     categoryStore.fetchCategories(),
@@ -50,7 +96,7 @@ const STATUS_TEXTS = {
   rejected: 'Đã từ chối',
 }
 
-const normalizedPosts = computed(() => posts.value.map(normalizePost))
+const normalizedPosts = computed(() => announcementPosts.value.map(normalizePost))
 
 const filteredPosts = computed(() => {
   const query = keyword.value.trim().toLowerCase()
@@ -73,7 +119,9 @@ const applyCategoryFilter = async () => {
   isFiltering.value = true
   try {
     const ids = selectedCategoryIds.value.filter((id) => id !== null && id !== undefined && id !== '')
-    await store.fetchPosts(ids.length ? { category_ids: ids } : undefined)
+    // Chỉ lọc trong các category thuộc nhóm thông báo
+    const validIds = ids.filter((id) => announcementCategoryIds.value.includes(id))
+    await store.fetchPosts(validIds.length ? { category_ids: validIds } : undefined)
   } finally {
     isFiltering.value = false
   }
@@ -92,43 +140,29 @@ const toggleCategory = (id) => {
   }
 }
 
-// Nhóm categories theo category groups
+// Nhóm categories theo category groups - chỉ hiển thị nhóm thông báo
 const categoriesByGroup = computed(() => {
-  const groups = categoryGroupStore.categoryGroups || []
+  if (!announcementGroup.value) return []
   const allCategories = categories.value || []
-  const result = []
-
-  // Thêm categories theo từng nhóm
-  groups.forEach((group) => {
-    const groupCategories = allCategories.filter((cat) => cat.category_group_id === group.id)
-    if (groupCategories.length > 0) {
-      result.push({
-        groupId: group.id,
-        groupName: group.name,
-        categories: groupCategories,
-      })
-    }
-  })
-
-  // Thêm categories không thuộc nhóm nào (category_group_id = null)
-  const ungroupedCategories = allCategories.filter((cat) => !cat.category_group_id)
-  if (ungroupedCategories.length > 0) {
-    result.push({
-      groupId: null,
-      groupName: 'Danh mục khác',
-      categories: ungroupedCategories,
-    })
-  }
-
-  return result
+  const groupCategories = allCategories.filter(
+    (cat) => cat.category_group_id === announcementGroup.value.id
+  )
+  if (groupCategories.length === 0) return []
+  return [
+    {
+      groupId: announcementGroup.value.id,
+      groupName: announcementGroup.value.name,
+      categories: groupCategories,
+    },
+  ]
 })
 
 const handleCreate = () => {
-  router.push({ name: 'post-form' })
+  router.push({ name: 'announcement-form' })
 }
 
 const handleEdit = (post) => {
-  router.push({ name: 'post-edit', params: { id: post.id } })
+  router.push({ name: 'announcement-edit', params: { id: post.id } })
 }
 
 const showPlaceholder = (message) => {
@@ -145,12 +179,12 @@ const handleQuickEdit = () => {
 
 const handleDelete = async (post) => {
   if (!post?.id) return
-  if (!window.confirm(`Bạn có chắc muốn xóa bài viết "${post.title}"?`)) return
+  if (!window.confirm(`Bạn có chắc muốn xóa thông báo "${post.title}"?`)) return
   deletingId.value = post.id
   try {
     await store.deletePost(post.id)
   } catch (error) {
-    showPlaceholder(error?.message ?? 'Không thể xóa bài viết.')
+    showPlaceholder(error?.message ?? 'Không thể xóa thông báo.')
   } finally {
     deletingId.value = null
   }
@@ -162,7 +196,7 @@ const handlePreview = (post) => {
     const url = post.slug.startsWith('http') ? post.slug : `${window.location.origin}/${post.slug}`
     window.open(url, '_blank', 'noopener')
   } else {
-    showPlaceholder('Bài viết chưa có đường dẫn xem trước.')
+    showPlaceholder('Thông báo chưa có đường dẫn xem trước.')
   }
 }
 
@@ -258,14 +292,14 @@ function formatDateTime(value) {
     <header class="page__header">
       <div>
         <p class="eyebrow">Nội dung chính</p>
-        <h2>Bài viết</h2>
-        <p>Kiểm duyệt bài viết đã xuất bản, bản nháp và lịch lên sóng tại một nơi.</p>
+        <h2>Thông báo</h2>
+        <p>Quản lý và kiểm duyệt các thông báo đã xuất bản, bản nháp và lịch lên sóng tại một nơi.</p>
       </div>
       <div class="page__actions">
         <div class="page__search">
-          <AppSearchBar placeholder="Tìm kiếm bài viết..." @search="handleSearch" />
+          <AppSearchBar placeholder="Tìm kiếm thông báo..." @search="handleSearch" />
         </div>
-        <BaseButton @click="handleCreate">Thêm bài viết</BaseButton>
+        <BaseButton @click="handleCreate">Thêm thông báo</BaseButton>
       </div>
     </header>
 
@@ -293,7 +327,7 @@ function formatDateTime(value) {
           </svg>
         </button>
         <div v-if="showCategoryDropdown" class="filter-dropdown" @click.stop>
-          <div v-if="!categoriesByGroup.length" class="dropdown-empty">Chưa có danh mục.</div>
+          <div v-if="!categoriesByGroup.length" class="dropdown-empty">Chưa có danh mục thông báo.</div>
           <div v-else class="filter-groups">
             <div v-for="group in categoriesByGroup" :key="group.groupId ?? 'ungrouped'" class="filter-group-item">
               <div class="filter-group-header">
@@ -334,7 +368,7 @@ function formatDateTime(value) {
     </div>
 
     <div class="post-table-wrapper">
-      <div v-if="isLoading" class="table-state">Đang tải dữ liệu bài viết...</div>
+      <div v-if="isLoading" class="table-state">Đang tải dữ liệu thông báo...</div>
       <div v-else-if="loadError" class="table-state table-state--error">{{ loadError }}</div>
       <template v-else>
         <table class="post-table">
@@ -427,7 +461,7 @@ function formatDateTime(value) {
           </tbody>
         </table>
         <p v-if="!filteredPosts.length" class="table-empty">
-          Không tìm thấy bài viết nào phù hợp với từ khóa "{{ keyword }}".
+          Không tìm thấy thông báo nào phù hợp với từ khóa "{{ keyword }}".
         </p>
       </template>
     </div>
@@ -893,3 +927,4 @@ function formatDateTime(value) {
   }
 }
 </style>
+

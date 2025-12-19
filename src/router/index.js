@@ -22,6 +22,8 @@ import BannerManagementView from '@/views/banners/BannerManagementView.vue'
 import CategoryGroupListView from '@/views/category-groups/CategoryGroupListView.vue'
 import CategoryGroupFormView from '@/views/category-groups/CategoryGroupFormView.vue'
 import CategoryGroupDetailView from '@/views/category-groups/CategoryGroupDetailView.vue'
+import AnnouncementListView from '@/views/announcements/AnnouncementListView.vue'
+import AnnouncementFormView from '@/views/announcements/AnnouncementFormView.vue'
 import tokenService from '@/services/tokenService'
 import { useAuthStore } from '@/store/modules/auth'
 
@@ -60,6 +62,9 @@ const router = createRouter({
         { path: 'events/new', name: 'event-form', component: EventFormView },
         { path: 'events/:id', name: 'event-detail', component: EventDetailView },
         { path: 'events/:id/edit', name: 'event-edit', component: EventFormView },
+        { path: 'announcements', name: 'announcement-list', component: AnnouncementListView },
+        { path: 'announcements/new', name: 'announcement-form', component: AnnouncementFormView },
+        { path: 'announcements/:id/edit', name: 'announcement-edit', component: AnnouncementFormView },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },

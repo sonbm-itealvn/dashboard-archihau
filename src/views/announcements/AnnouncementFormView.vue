@@ -49,8 +49,19 @@ const thumbnailPreview = computed(() => form.thumbnail?.trim() || '')
 const isUploadingThumbnail = computed(() => mediaStore.isUploading)
 const isUploadingContent = computed(() => mediaStore.isUploading)
 
+// Tìm category group "Thông báo"
+const announcementGroup = computed(() => {
+  const groups = categoryGroupStore.categoryGroups || []
+  return groups.find(
+    (group) =>
+      group.name?.toLowerCase().includes('thông báo') ||
+      group.name?.toLowerCase().includes('thong bao') ||
+      group.slug?.toLowerCase().includes('thong-bao')
+  )
+})
+
 const goBack = () => {
-  router.push({ name: 'post-list' })
+  router.push({ name: 'announcement-list' })
 }
 
 const resetForm = () => {
@@ -90,7 +101,7 @@ const loadPost = async () => {
     const post = await fetchPostById(route.params.id)
     populateForm(post)
   } catch (error) {
-    loadError.value = error?.message ?? 'Không thể tải bài viết.'
+    loadError.value = error?.message ?? 'Không thể tải thông báo.'
   } finally {
     isLoading.value = false
   }
@@ -109,47 +120,25 @@ onMounted(async () => {
   }
 })
 
-// Nhóm categories theo category groups
+// Nhóm categories theo category groups - chỉ hiển thị nhóm thông báo
 const categoriesByGroup = computed(() => {
-  const groups = categoryGroupStore.categoryGroups || []
-  const categories = categoryStore.categories || []
-  const result = []
-
-  // Thêm categories theo từng nhóm
-  groups.forEach((group) => {
-    const groupCategories = categories
-      .filter((cat) => cat.category_group_id === group.id)
-      .map((category) => ({
-        id: category.id,
-        label: category.display_name || category.name,
-      }))
-
-    if (groupCategories.length > 0) {
-      result.push({
-        groupId: group.id,
-        groupName: group.name,
-        categories: groupCategories,
-      })
-    }
-  })
-
-  // Thêm categories không thuộc nhóm nào (category_group_id = null)
-  const ungroupedCategories = categories
-    .filter((cat) => !cat.category_group_id)
+  if (!announcementGroup.value) return []
+  const allCategories = categoryStore.categories || []
+  const groupCategories = allCategories
+    .filter((cat) => cat.category_group_id === announcementGroup.value.id)
     .map((category) => ({
       id: category.id,
       label: category.display_name || category.name,
     }))
 
-  if (ungroupedCategories.length > 0) {
-    result.push({
-      groupId: null,
-      groupName: 'Danh mục khác',
-      categories: ungroupedCategories,
-    })
-  }
-
-  return result
+  if (groupCategories.length === 0) return []
+  return [
+    {
+      groupId: announcementGroup.value.id,
+      groupName: announcementGroup.value.name,
+      categories: groupCategories,
+    },
+  ]
 })
 
 const tagOptions = computed(() =>
@@ -176,7 +165,7 @@ const editorConfig = {
     'undo',
     'redo',
   ],
-  placeholder: 'Nhập nội dung bài viết...',
+  placeholder: 'Nhập nội dung thông báo...',
   htmlSupport: {
     allow: [
       {
@@ -310,15 +299,14 @@ const handleContentFileChange = async (type, event) => {
   }
 }
 
-
 const handleSubmit = async () => {
   formError.value = ''
   if (!form.title.trim()) {
-    formError.value = 'Vui lòng nhập tiêu đề bài viết.'
+    formError.value = 'Vui lòng nhập tiêu đề thông báo.'
     return
   }
   if (!form.body || !form.body.trim()) {
-    formError.value = 'Nội dung bài viết không được để trống.'
+    formError.value = 'Nội dung thông báo không được để trống.'
     return
   }
 
@@ -347,11 +335,11 @@ const handleSubmit = async () => {
     } else {
       await createPost(payload)
     }
-    router.push({ name: 'post-list' })
+    router.push({ name: 'announcement-list' })
   } catch (error) {
     formError.value =
       error?.message ??
-      `Không thể ${isEditing.value ? 'cập nhật' : 'tạo'} bài viết. Vui lòng kiểm tra dữ liệu và thử lại.`
+      `Không thể ${isEditing.value ? 'cập nhật' : 'tạo'} thông báo. Vui lòng kiểm tra dữ liệu và thử lại.`
   } finally {
     isSubmitting.value = false
   }
@@ -362,13 +350,13 @@ const handleSubmit = async () => {
   <section class="card form">
     <header class="form__header">
       <div>
-        <p class="eyebrow">{{ isEditing ? 'Cập nhật nội dung' : 'Thêm bài viết mới' }}</p>
-        <h2>{{ isEditing ? 'Chỉnh sửa bài viết' : 'Tạo bài viết' }}</h2>
+        <p class="eyebrow">{{ isEditing ? 'Cập nhật nội dung' : 'Thêm thông báo mới' }}</p>
+        <h2>{{ isEditing ? 'Chỉnh sửa thông báo' : 'Tạo thông báo' }}</h2>
       </div>
       <BaseButton variant="secondary" type="button" @click="goBack">Quay lại danh sách</BaseButton>
     </header>
 
-    <div v-if="isLoading" class="form-state">Đang tải nội dung bài viết...</div>
+    <div v-if="isLoading" class="form-state">Đang tải nội dung thông báo...</div>
     <div v-else-if="loadError" class="form-state form-state--error">{{ loadError }}</div>
 
     <form v-else class="form__body" @submit.prevent="handleSubmit">
@@ -378,11 +366,11 @@ const handleSubmit = async () => {
           <h3>Thông tin chính</h3>
           <div class="form-field">
             <label for="title">Tiêu đề *</label>
-            <input id="title" v-model="form.title" placeholder="Nhập tiêu đề bài viết" required />
+            <input id="title" v-model="form.title" placeholder="Nhập tiêu đề thông báo" required />
           </div>
           <div class="form-field">
             <label for="slug">Đường dẫn (slug)</label>
-            <input id="slug" v-model="form.slug" placeholder="vi-du-bai-viet" />
+            <input id="slug" v-model="form.slug" placeholder="vi-du-thong-bao" />
           </div>
           <div class="form-field">
             <label for="excerpt">Mô tả ngắn</label>
@@ -423,7 +411,7 @@ const handleSubmit = async () => {
               </div>
               <p v-if="thumbnailError" class="form-hint form-hint--error">{{ thumbnailError }}</p>
               <div v-if="thumbnailPreview" class="thumbnail-preview">
-                <img :src="thumbnailPreview" alt="Ảnh đại diện bài viết" />
+                <img :src="thumbnailPreview" alt="Ảnh đại diện thông báo" />
               </div>
             </div>
           </div>
@@ -433,8 +421,8 @@ const handleSubmit = async () => {
         <div class="form-section form-section--sidebar">
           <h3>Phân loại</h3>
           <div class="form-field">
-            <label>Danh mục bài viết</label>
-            <div v-if="!categoriesByGroup.length" class="hint">Chưa có danh mục nào.</div>
+            <label>Danh mục thông báo</label>
+            <div v-if="!categoriesByGroup.length" class="hint">Chưa có danh mục thông báo nào.</div>
             <div v-else class="category-groups">
               <div v-for="group in categoriesByGroup" :key="group.groupId ?? 'ungrouped'" class="category-group">
                 <div class="category-group__header">
@@ -457,7 +445,7 @@ const handleSubmit = async () => {
             </div>
           </div>
           <div class="form-field">
-            <label>Thẻ bài viết</label>
+            <label>Thẻ thông báo</label>
             <div class="pill-group">
               <button
                 v-for="tag in tagOptions"
@@ -528,7 +516,7 @@ const handleSubmit = async () => {
           <div v-if="insertedMedia.length > 0" class="inserted-media">
             <div class="inserted-media__header">
               <span class="inserted-media__title">Media đã chèn ({{ insertedMedia.length }})</span>
-              <span class="inserted-media__hint">Các media này sẽ được thêm vào cuối bài viết khi lưu</span>
+              <span class="inserted-media__hint">Các media này sẽ được thêm vào cuối thông báo khi lưu</span>
             </div>
             <div class="inserted-media__grid">
               <div v-for="item in insertedMedia" :key="item.id" class="inserted-media__item">
@@ -549,7 +537,7 @@ const handleSubmit = async () => {
       <div class="form-actions">
         <BaseButton variant="secondary" type="button" @click="goBack">Hủy</BaseButton>
         <BaseButton type="submit" :disabled="isSubmitting">
-          {{ isSubmitting ? 'Đang lưu...' : 'Lưu bài viết' }}
+          {{ isSubmitting ? 'Đang lưu...' : 'Lưu thông báo' }}
         </BaseButton>
       </div>
       <p v-if="formError" class="form-error">{{ formError }}</p>
@@ -956,3 +944,4 @@ const handleSubmit = async () => {
   text-decoration: underline;
 }
 </style>
+
