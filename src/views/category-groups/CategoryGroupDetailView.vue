@@ -3,13 +3,16 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import AppModal from '@/components/common/AppModal.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { useCategoryGroupStore } from '@/store/modules/categoryGroup'
 import { fetchCategories } from '@/api/categoryApi'
-import { assignCategoriesToGroup } from '@/api/categoryGroupApi'
+import { assignCategoriesToGroup, removeCategoriesFromGroup } from '@/api/categoryGroupApi'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
 const store = useCategoryGroupStore()
+const { showToast } = useToast()
 
 const group = ref(null)
 const categories = ref([])
@@ -21,6 +24,10 @@ const actionError = ref('')
 const showAddModal = ref(false)
 const selectedCategoryIds = ref([])
 const isAssigning = ref(false)
+const showRemoveConfirm = ref(false)
+const categoryToRemove = ref(null)
+const isRemoving = ref(false)
+const isRemovingAll = ref(false)
 
 const loadGroup = async () => {
   isLoading.value = true
@@ -130,6 +137,58 @@ const formatDateTime = (value) => {
   })
 }
 
+const openRemoveConfirm = (category = null) => {
+  categoryToRemove.value = category
+  showRemoveConfirm.value = true
+}
+
+const closeRemoveConfirm = () => {
+  if (isRemoving.value || isRemovingAll.value) return
+  showRemoveConfirm.value = false
+  categoryToRemove.value = null
+}
+
+const handleRemoveCategories = async () => {
+  if (isRemoving.value || isRemovingAll.value) return
+
+  const categoryIds = categoryToRemove.value 
+    ? [categoryToRemove.value.id] 
+    : null
+
+  if (categoryToRemove.value) {
+    isRemoving.value = true
+  } else {
+    isRemovingAll.value = true
+  }
+
+  try {
+    await removeCategoriesFromGroup(route.params.id, categoryIds)
+    await loadGroup()
+    showToast(
+      categoryToRemove.value 
+        ? 'Đã xóa danh mục khỏi nhóm thành công' 
+        : 'Đã xóa tất cả danh mục khỏi nhóm thành công',
+      'success'
+    )
+    closeRemoveConfirm()
+  } catch (err) {
+    showToast(
+      err?.message ?? 'Không thể xóa danh mục khỏi nhóm. Vui lòng thử lại.',
+      'error'
+    )
+  } finally {
+    isRemoving.value = false
+    isRemovingAll.value = false
+  }
+}
+
+const getRemoveConfirmMessage = () => {
+  if (categoryToRemove.value) {
+    return `Bạn có chắc chắn muốn xóa danh mục "${categoryToRemove.value.display_name ?? categoryToRemove.value.name ?? 'Danh mục'}" khỏi nhóm này?`
+  }
+  return `Bạn có chắc chắn muốn xóa tất cả danh mục khỏi nhóm này? Hành động này không thể hoàn tác.`
+}
+
 onMounted(loadGroup)
 </script>
 
@@ -183,7 +242,17 @@ onMounted(loadGroup)
       <div class="categories-section">
         <div class="section-header">
           <h3>Danh sách danh mục trong nhóm</h3>
-          <BaseButton size="sm" @click="openAddModal">+ Thêm danh mục</BaseButton>
+          <div class="section-actions">
+            <BaseButton 
+              v-if="categories.length > 0"
+              variant="danger" 
+              size="sm" 
+              @click="openRemoveConfirm(null)"
+            >
+              Xóa tất cả
+            </BaseButton>
+            <BaseButton size="sm" @click="openAddModal">+ Thêm danh mục</BaseButton>
+          </div>
         </div>
 
         <div v-if="!categories.length" class="empty-state">
@@ -201,6 +270,15 @@ onMounted(loadGroup)
                   Thứ tự: #{{ category.display_order }}
                 </span>
               </div>
+            </div>
+            <div class="category-actions">
+              <BaseButton 
+                variant="danger" 
+                size="sm" 
+                @click="openRemoveConfirm(category)"
+              >
+                Xóa
+              </BaseButton>
             </div>
           </div>
         </div>
@@ -248,6 +326,15 @@ onMounted(loadGroup)
         </BaseButton>
       </template>
     </AppModal>
+
+    <!-- Dialog xác nhận xóa danh mục -->
+    <ConfirmDialog
+      v-model="showRemoveConfirm"
+      :title="categoryToRemove ? 'Xóa danh mục khỏi nhóm' : 'Xóa tất cả danh mục'"
+      :message="getRemoveConfirmMessage()"
+      @confirm="handleRemoveCategories"
+      @update:modelValue="(val) => { if (!val && !isRemoving && !isRemovingAll) closeRemoveConfirm() }"
+    />
   </section>
 </template>
 
@@ -340,6 +427,12 @@ onMounted(loadGroup)
   flex-wrap: wrap;
 }
 
+.section-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .section-header h3 {
   margin: 0;
   font-size: 1.25rem;
@@ -367,6 +460,10 @@ onMounted(loadGroup)
 }
 
 .category-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
   padding: 1.25rem;
   border: 1px solid rgba(219, 234, 254, 0.6);
   border-radius: var(--radius-lg);
@@ -377,6 +474,16 @@ onMounted(loadGroup)
 .category-item:hover {
   border-color: rgba(14, 165, 233, 0.4);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.category-info {
+  flex: 1;
+}
+
+.category-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .category-info h4 {

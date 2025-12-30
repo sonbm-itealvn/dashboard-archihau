@@ -37,3 +37,13 @@ export async function assignCategoriesToGroup(groupId, categoryIds) {
   })
 }
 
+export async function removeCategoriesFromGroup(groupId, categoryIds = null) {
+  const body = categoryIds && categoryIds.length > 0 
+    ? { category_ids: categoryIds } 
+    : {}
+  return http(`${RESOURCE}/${groupId}/remove-categories`, {
+    method: 'POST',
+    body,
+  })
+}
+
