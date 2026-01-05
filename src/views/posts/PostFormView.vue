@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, computed, onMounted, ref, onBeforeUnmount } from 'vue'
+import { reactive, computed, onMounted, ref, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
@@ -25,6 +25,12 @@ const contentImageInputRef = ref(null)
 const contentVideoInputRef = ref(null)
 const editorRef = ref(null)
 const insertedMedia = ref([]) // Lưu media đã chèn để preview và merge khi submit
+const draftLoaded = ref(false) // Đánh dấu đã tải bản nháp
+const draftSavedAt = ref(null) // Thời gian lưu bản nháp cuối cùng
+
+// Key để lưu bản nháp vào localStorage
+const DRAFT_STORAGE_KEY = 'post_draft'
+let autoSaveTimer = null
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Bản nháp' },
@@ -50,6 +56,10 @@ const isUploadingThumbnail = computed(() => mediaStore.isUploading)
 const isUploadingContent = computed(() => mediaStore.isUploading)
 
 const goBack = () => {
+  // Lưu bản nháp trước khi quay lại
+  if (!isEditing.value) {
+    saveDraft()
+  }
   router.push({ name: 'post-list' })
 }
 
@@ -62,6 +72,86 @@ const resetForm = () => {
   form.thumbnail = ''
   form.categories = []
   form.tags = []
+  insertedMedia.value = []
+}
+
+// Lưu bản nháp vào localStorage
+const saveDraft = () => {
+  if (isEditing.value) return // Không lưu bản nháp khi đang chỉnh sửa bài viết đã có
+  
+  const savedAt = new Date().toISOString()
+  const draft = {
+    title: form.title,
+    status: form.status,
+    body: form.body,
+    slug: form.slug,
+    excerpt: form.excerpt,
+    thumbnail: form.thumbnail,
+    categories: form.categories,
+    tags: form.tags,
+    insertedMedia: insertedMedia.value,
+    savedAt,
+  }
+  
+  try {
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft))
+    draftSavedAt.value = savedAt
+  } catch (error) {
+    console.warn('Không thể lưu bản nháp:', error)
+  }
+}
+
+// Lưu bản nháp với debounce (tránh lưu quá nhiều lần)
+const saveDraftDebounced = () => {
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+  }
+  autoSaveTimer = setTimeout(() => {
+    saveDraft()
+  }, 1000) // Lưu sau 1 giây không có thay đổi
+}
+
+// Tải bản nháp từ localStorage
+const loadDraft = () => {
+  if (isEditing.value) return false // Không tải bản nháp khi đang chỉnh sửa bài viết đã có
+  
+  try {
+    const draftJson = localStorage.getItem(DRAFT_STORAGE_KEY)
+    if (!draftJson) return false
+    
+    const draft = JSON.parse(draftJson)
+    if (!draft) return false
+    
+    // Kiểm tra xem có dữ liệu đáng lưu không
+    const hasContent = draft.title?.trim() || draft.body?.trim() || draft.excerpt?.trim()
+    if (!hasContent) return false
+    
+    // Khôi phục dữ liệu
+    form.title = draft.title || ''
+    form.status = draft.status || STATUS_OPTIONS[0].value
+    form.body = draft.body || ''
+    form.slug = draft.slug || ''
+    form.excerpt = draft.excerpt || ''
+    form.thumbnail = draft.thumbnail || ''
+    form.categories = Array.isArray(draft.categories) ? draft.categories : []
+    form.tags = Array.isArray(draft.tags) ? draft.tags : []
+    insertedMedia.value = Array.isArray(draft.insertedMedia) ? draft.insertedMedia : []
+    draftSavedAt.value = draft.savedAt || null
+    draftLoaded.value = true
+    return true
+  } catch (error) {
+    console.warn('Không thể tải bản nháp:', error)
+    return false
+  }
+}
+
+// Xóa bản nháp
+const clearDraft = () => {
+  try {
+    localStorage.removeItem(DRAFT_STORAGE_KEY)
+  } catch (error) {
+    console.warn('Không thể xóa bản nháp:', error)
+  }
 }
 
 const populateForm = (post) => {
@@ -105,9 +195,41 @@ onMounted(async () => {
   if (isEditing.value) {
     await loadPost()
   } else {
-    resetForm()
+    // Thử tải bản nháp trước, nếu không có thì reset form
+    const hasDraft = loadDraft()
+    // Nếu không có dữ liệu trong bản nháp, reset form
+    if (!hasDraft && !form.title && !form.body && !form.excerpt) {
+      resetForm()
+    }
   }
 })
+
+// Theo dõi thay đổi form để tự động lưu bản nháp
+watch(
+  () => [
+    form.title,
+    form.body,
+    form.slug,
+    form.excerpt,
+    form.thumbnail,
+    form.categories,
+    form.tags,
+    form.status,
+  ],
+  () => {
+    saveDraftDebounced()
+  },
+  { deep: true }
+)
+
+// Theo dõi insertedMedia để lưu bản nháp
+watch(
+  () => insertedMedia.value,
+  () => {
+    saveDraftDebounced()
+  },
+  { deep: true }
+)
 
 // Nhóm categories theo category groups
 const categoriesByGroup = computed(() => {
@@ -194,6 +316,14 @@ const handleEditorReady = (editor) => {
 }
 
 onBeforeUnmount(() => {
+  // Lưu bản nháp trước khi unmount
+  if (!isEditing.value) {
+    saveDraft()
+  }
+  // Clear timer
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+  }
   editorRef.value = null
 })
 
@@ -346,6 +476,8 @@ const handleSubmit = async () => {
       await updatePost(route.params.id, payload)
     } else {
       await createPost(payload)
+      // Xóa bản nháp sau khi lưu thành công
+      clearDraft()
     }
     router.push({ name: 'post-list' })
   } catch (error) {
@@ -371,7 +503,15 @@ const handleSubmit = async () => {
     <div v-if="isLoading" class="form-state">Đang tải nội dung bài viết...</div>
     <div v-else-if="loadError" class="form-state form-state--error">{{ loadError }}</div>
 
-    <form v-else class="form__body" @submit.prevent="handleSubmit">
+    <template v-else>
+      <!-- Thông báo bản nháp đã được tải -->
+      <div v-if="!isEditing && draftLoaded" class="draft-notice">
+        <span class="draft-notice__icon">💾</span>
+        <span class="draft-notice__text">Đã tải bản nháp tự động. Bạn có thể tiếp tục chỉnh sửa.</span>
+        <button type="button" class="draft-notice__dismiss" @click="draftLoaded = false">×</button>
+      </div>
+
+      <form class="form__body" @submit.prevent="handleSubmit">
       <div class="form__main-grid">
         <!-- Cột trái: Thông tin chính -->
         <div class="form-section form-section--main">
@@ -553,7 +693,8 @@ const handleSubmit = async () => {
         </BaseButton>
       </div>
       <p v-if="formError" class="form-error">{{ formError }}</p>
-    </form>
+      </form>
+    </template>
   </section>
 </template>
 
@@ -954,5 +1095,43 @@ const handleSubmit = async () => {
 
 .inserted-media__remove:hover {
   text-decoration: underline;
+}
+
+/* Draft notice */
+.draft-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(16, 185, 129, 0.1));
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.draft-notice__icon {
+  font-size: 1.125rem;
+}
+
+.draft-notice__text {
+  flex: 1;
+  font-weight: 500;
+}
+
+.draft-notice__dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  transition: color var(--transition-fast);
+}
+
+.draft-notice__dismiss:hover {
+  color: var(--text-color);
 }
 </style>
