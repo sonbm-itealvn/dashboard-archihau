@@ -17,11 +17,10 @@
     "lint": "run-s lint:*"
   },
   "dependencies": {
+    "@vueup/vue-quill": "^1.2.0",
     "pinia": "^3.0.4",
     "vue": "^3.5.25",
-    "vue-router": "^4.6.3",
-    "@ckeditor/ckeditor5-build-classic": "^40.2.0",
-    "@ckeditor/ckeditor5-vue": "^5.1.0"
+    "vue-router": "^4.6.3"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.3",

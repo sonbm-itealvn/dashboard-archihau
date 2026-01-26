@@ -15,8 +15,7 @@ const ROLE_LABELS = {
   manager: 'Quản lý',
   editor: 'Biên tập viên',
   contributor: 'Cộng tác viên',
-  author: 'Tác giả',
-  subscriber: 'Thành viên đăng ký',
+
 }
 
 const route = useRoute()

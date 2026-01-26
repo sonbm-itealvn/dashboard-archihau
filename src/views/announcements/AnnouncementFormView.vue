@@ -2,7 +2,7 @@
 import { reactive, computed, onMounted, ref, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
+import RichTextEditor from '@/components/common/RichTextEditor.vue'
 import { createPost, updatePost, fetchPostById } from '@/api/postApi'
 import { useCategoryStore } from '@/store/modules/category'
 import { useCategoryGroupStore } from '@/store/modules/categoryGroup'
@@ -148,38 +148,8 @@ const tagOptions = computed(() =>
   })),
 )
 
-const Editor = ClassicEditor
-const editorConfig = {
-  toolbar: [
-    'heading',
-    '|',
-    'bold',
-    'italic',
-    'underline',
-    'link',
-    'bulletedList',
-    'numberedList',
-    '|',
-    'blockQuote',
-    'insertTable',
-    'undo',
-    'redo',
-  ],
-  placeholder: 'Nhập nội dung thông báo...',
-  htmlSupport: {
-    allow: [
-      {
-        name: /.*/,
-        attributes: true,
-        classes: true,
-        styles: true,
-      },
-    ],
-  },
-}
-
-const handleEditorReady = (editor) => {
-  editorRef.value = editor
+const handleEditorReady = (quill) => {
+  editorRef.value = quill
 }
 
 onBeforeUnmount(() => {
@@ -233,36 +203,17 @@ const insertMediaUrl = (url, type) => {
   if (!safeUrl) return
   const isVideo = type === 'video'
 
+  // Thử chèn media thông qua RichTextEditor component
   if (editorRef.value) {
-    const editor = editorRef.value
-
-    // Ảnh: dùng lệnh insertImage có sẵn trong CKEditor (chèn tại con trỏ)
-    if (!isVideo && editor.commands.get('insertImage')) {
-      try {
-        editor.execute('insertImage', { source: safeUrl })
-        return
-      } catch (e) {
-        console.warn('insertImage command failed:', e)
+    try {
+      if (isVideo) {
+        editorRef.value.insertVideo(safeUrl)
+      } else {
+        editorRef.value.insertImage(safeUrl)
       }
-    }
-
-    // Thử chèn video trực tiếp bằng model fragment (nếu CKEditor cho phép)
-    if (isVideo) {
-      try {
-        const mediaHtml = `<figure class="media"><video controls playsinline style="max-width:100%;height:auto;"><source src="${safeUrl}" type="video/mp4" />Trình duyệt không hỗ trợ video.</video></figure>`
-        const viewFragment = editor.data.processor.toView(mediaHtml)
-        const modelFragment = editor.data.toModel(viewFragment)
-        editor.model.change((writer) => {
-          editor.model.insertContent(modelFragment, editor.model.document.selection)
-        })
-        // Nếu nội dung có chứa URL sau khi chèn, coi như thành công
-        const afterData = editor.getData() ?? ''
-        if (afterData.includes(safeUrl)) {
-          return
-        }
-      } catch (err) {
-        console.warn('Insert video via model failed:', err)
-      }
+      return
+    } catch (e) {
+      console.warn('Insert media via editor failed:', e)
     }
   }
 
@@ -509,9 +460,15 @@ const handleSubmit = async () => {
             </div>
           </div>
           <div class="rich-editor">
-            <ckeditor v-model="form.body" :editor="Editor" :config="editorConfig" @ready="handleEditorReady" />
+            <RichTextEditor
+              ref="editorRef"
+              v-model="form.body"
+              placeholder="Nhập nội dung thông báo..."
+              min-height="400px"
+              @ready="handleEditorReady"
+            />
           </div>
-          
+
           <!-- Preview media đã chèn (video sẽ hiển thị ở đây vì CKEditor không hỗ trợ) -->
           <div v-if="insertedMedia.length > 0" class="inserted-media">
             <div class="inserted-media__header">
